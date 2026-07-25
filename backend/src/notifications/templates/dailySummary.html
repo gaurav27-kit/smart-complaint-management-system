@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Summary Report — SCMS</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #F1F5F9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
+    .email-wrapper { padding: 40px 16px; }
+    .email-card { background-color: #ffffff; border-radius: 16px; max-width: 600px; margin: 0 auto; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+    .header { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); padding: 40px 48px; }
+    .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .logo { font-size: 20px; font-weight: 800; color: #F1F5F9; }
+    .logo span { color: #4F46E5; }
+    .date-badge { background: rgba(255,255,255,0.1); color: #94A3B8; font-size: 12px; padding: 4px 12px; border-radius: 20px; display: inline-block; }
+    .header-title { color: #F1F5F9; font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .header-subtitle { color: #64748B; font-size: 13px; }
+    .body { padding: 40px 48px; }
+    .section-title { font-size: 11px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 16px; }
+    .stats-grid { margin-bottom: 32px; }
+    .stat-card { border-radius: 10px; padding: 20px; display: inline-block; width: 100%; box-sizing: border-box; }
+    .stat-number { font-size: 32px; font-weight: 800; }
+    .stat-label { font-size: 13px; font-weight: 500; margin-top: 4px; }
+    .stat-blue { background: #EFF6FF; color: #1D4ED8; }
+    .stat-yellow { background: #FFFBEB; color: #92400E; }
+    .stat-purple { background: #F5F3FF; color: #5B21B6; }
+    .stat-green { background: #ECFDF5; color: #065F46; }
+    .divider { border: none; border-top: 1px solid #E5E7EB; margin: 32px 0; }
+    .table-header { background: #F8FAFC; }
+    .complaints-table { width: 100%; border-collapse: collapse; border: 1px solid #E5E7EB; border-radius: 10px; overflow: hidden; }
+    .complaints-table th { background: #F8FAFC; padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #E5E7EB; }
+    .complaints-table td { padding: 14px 16px; font-size: 13px; color: #374151; border-bottom: 1px solid #F3F4F6; }
+    .complaints-table tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .badge-pending { background: #FEF9C3; color: #713F12; }
+    .badge-progress { background: #DBEAFE; color: #1E40AF; }
+    .badge-resolved { background: #DCFCE7; color: #166534; }
+    .cta-container { text-align: center; margin: 32px 0; }
+    .cta-button { display: inline-block; background: linear-gradient(135deg, #4338CA 0%, #6D28D9 100%); color: #ffffff !important; text-decoration: none; font-size: 14px; font-weight: 600; padding: 14px 36px; border-radius: 10px; }
+    .footer { background: #F8FAFC; padding: 28px 48px; border-top: 1px solid #E5E7EB; }
+    .footer-text { font-size: 12px; color: #9CA3AF; line-height: 1.7; margin: 0; text-align: center; }
+    @media only screen and (max-width: 600px) { .body { padding: 24px; } .header { padding: 24px; } }
+  </style>
+</head>
+<body>
+  <div class="email-wrapper">
+    <table class="email-card" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td class="header">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>
+                <div class="logo">SCMS<span>.</span></div>
+              </td>
+              <td align="right">
+                <span class="date-badge">{{reportDate}}</span>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding-top:24px;">
+                <div class="header-title">📊 Daily Summary Report</div>
+                <div class="header-subtitle">Generated at {{generatedAt}} · Admin Report</div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td class="body">
+          <p class="section-title">Today's Overview</p>
+
+          <!-- Stats Grid -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
+            <tr>
+              <td width="48%" style="padding-right:8px;">
+                <div style="background:#EFF6FF;border-radius:10px;padding:20px;">
+                  <div style="font-size:32px;font-weight:800;color:#1D4ED8;">{{totalToday}}</div>
+                  <div style="font-size:13px;color:#1D4ED8;margin-top:4px;">New Today</div>
+                </div>
+              </td>
+              <td width="4%"></td>
+              <td width="48%" style="padding-left:8px;">
+                <div style="background:#FFFBEB;border-radius:10px;padding:20px;">
+                  <div style="font-size:32px;font-weight:800;color:#92400E;">{{totalPending}}</div>
+                  <div style="font-size:13px;color:#92400E;margin-top:4px;">Pending</div>
+                </div>
+              </td>
+            </tr>
+            <tr><td colspan="3" style="height:16px;"></td></tr>
+            <tr>
+              <td width="48%" style="padding-right:8px;">
+                <div style="background:#F5F3FF;border-radius:10px;padding:20px;">
+                  <div style="font-size:32px;font-weight:800;color:#5B21B6;">{{totalInProgress}}</div>
+                  <div style="font-size:13px;color:#5B21B6;margin-top:4px;">In Progress</div>
+                </div>
+              </td>
+              <td width="4%"></td>
+              <td width="48%" style="padding-left:8px;">
+                <div style="background:#ECFDF5;border-radius:10px;padding:20px;">
+                  <div style="font-size:32px;font-weight:800;color:#065F46;">{{totalResolved}}</div>
+                  <div style="font-size:13px;color:#065F46;margin-top:4px;">Resolved</div>
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <hr class="divider" />
+
+          <!-- Recent Complaints Table -->
+          <p class="section-title">Recent Complaints (Last 24h)</p>
+          {{#if recentComplaints}}
+          <table class="complaints-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Priority</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each recentComplaints}}
+              <tr>
+                <td style="font-weight:500;color:#111827;">{{this.title}}</td>
+                <td>{{this.category}}</td>
+                <td>{{this.priority}}</td>
+                <td><span class="badge badge-pending">{{this.status}}</span></td>
+              </tr>
+              {{/each}}
+            </tbody>
+          </table>
+          {{/if}}
+
+          <div class="cta-container">
+            <a href="{{adminDashboardUrl}}" class="cta-button" target="_blank">Open Admin Dashboard →</a>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td class="footer">
+          <p class="footer-text">
+            © {{year}} SCMS Admin Panel · Daily automated report<br />
+            This report is generated every day at 8:00 AM.
+          </p>
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>

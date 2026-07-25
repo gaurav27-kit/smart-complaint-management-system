@@ -1,0 +1,89 @@
+<svg viewBox="0 0 1000 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2563EB;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4F46E5;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="15" flood-opacity="0.08" flood-color="#0f172a"/>
+    </filter>
+  </defs>
+  
+  <!-- Backdrop Glows -->
+  <circle cx="500" cy="300" r="250" fill="url(#primaryGrad)" opacity="0.03" />
+  <circle cx="200" cy="400" r="150" fill="#2563EB" opacity="0.04" filter="blur(30px)" />
+  <circle cx="800" cy="200" r="150" fill="#4F46E5" opacity="0.04" filter="blur(30px)" />
+
+  <!-- Workflow Arrows (Dashed) -->
+  <path d="M 280 150 Q 500 50 720 180" fill="none" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="8,8" />
+  <path d="M 240 400 Q 500 500 700 350" fill="none" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="8,8" />
+  <path d="M 500 135 L 500 180" fill="none" stroke="#4F46E5" stroke-width="3" stroke-dasharray="6,6" />
+
+  <!-- Laptop (Center) -->
+  <rect x="310" y="380" width="380" height="14" rx="7" fill="#cbd5e1" filter="url(#shadow)" />
+  <rect x="340" y="180" width="320" height="200" rx="12" fill="#ffffff" filter="url(#shadow)" />
+  <rect x="350" y="190" width="300" height="180" rx="6" fill="#f8fafc" />
+  <!-- AI Screen UI -->
+  <rect x="370" y="210" width="120" height="80" rx="8" fill="#e0e7ff" />
+  <rect x="500" y="210" width="130" height="35" rx="6" fill="#ffffff" filter="url(#shadow)" />
+  <circle cx="520" cy="227" r="8" fill="#22c55e" />
+  <rect x="535" y="224" width="70" height="6" rx="3" fill="#cbd5e1" />
+  <rect x="500" y="255" width="130" height="35" rx="6" fill="#ffffff" filter="url(#shadow)" />
+  <circle cx="520" cy="272" r="8" fill="#eab308" />
+  <rect x="535" y="269" width="50" height="6" rx="3" fill="#cbd5e1" />
+  <!-- AI Sparkles -->
+  <polygon points="410,240 413,230 416,240 426,243 416,246 413,256 410,246 400,243" fill="#4F46E5" />
+  <polygon points="440,260 442,255 444,260 449,262 444,264 442,269 440,264 435,262" fill="#38bdf8" />
+
+  <!-- Mobile Phone (Left) -->
+  <rect x="120" y="240" width="120" height="220" rx="24" fill="#ffffff" filter="url(#shadow)" />
+  <rect x="126" y="246" width="108" height="208" rx="18" fill="#f8fafc" />
+  <rect x="160" y="246" width="40" height="12" rx="6" fill="#ffffff" />
+  <rect x="136" y="280" width="88" height="50" rx="8" fill="#dbeafe" />
+  <rect x="136" y="340" width="88" height="25" rx="6" fill="#ffffff" filter="url(#shadow)" />
+  <rect x="136" y="375" width="88" height="25" rx="6" fill="#ffffff" filter="url(#shadow)" />
+
+  <!-- Cloud Sync (Top Center) -->
+  <circle cx="500" cy="90" r="45" fill="#ffffff" filter="url(#shadow)" />
+  <path d="M 485 95 A 12 12 0 0 1 505 85 A 15 15 0 0 1 525 95 A 12 12 0 0 1 515 110 L 485 110 A 10 10 0 0 1 485 95 Z" fill="#38bdf8" />
+  <path d="M 495 95 C 498 90, 508 90, 512 95" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" />
+  <path d="M 512 105 C 508 110, 498 110, 495 105" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" />
+
+  <!-- Security Shield (Right) -->
+  <circle cx="780" cy="180" r="50" fill="#ffffff" filter="url(#shadow)" />
+  <path d="M 780 150 L 805 160 L 805 185 C 805 205, 795 220, 780 230 C 765 220, 755 205, 755 185 L 755 160 Z" fill="url(#primaryGrad)" />
+  <path d="M 770 190 L 775 195 L 790 175" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Document & Checkmark (Bottom Left) -->
+  <rect x="220" y="100" width="90" height="110" rx="8" fill="#ffffff" filter="url(#shadow)" />
+  <rect x="235" y="120" width="60" height="6" rx="3" fill="#cbd5e1" />
+  <rect x="235" y="135" width="40" height="6" rx="3" fill="#cbd5e1" />
+  <rect x="235" y="150" width="50" height="6" rx="3" fill="#cbd5e1" />
+  <circle cx="270" cy="185" r="20" fill="#22c55e" />
+  <path d="M 262 185 L 267 190 L 278 178" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Notification Bell (Center Right) -->
+  <circle cx="680" cy="270" r="35" fill="#ffffff" filter="url(#shadow)" />
+  <path d="M 680 255 C 690 255, 690 270, 695 280 L 665 280 C 670 270, 670 255, 680 255 Z" fill="#eab308" />
+  <circle cx="680" cy="285" r="4" fill="#eab308" />
+  <circle cx="695" cy="260" r="6" fill="#ef4444" />
+
+  <!-- Avatars / Team Collaboration (Bottom Right) -->
+  <circle cx="750" cy="380" r="45" fill="#ffffff" filter="url(#shadow)" />
+  
+  <!-- Avatar 1 -->
+  <circle cx="735" cy="380" r="16" fill="#dbeafe" stroke="#ffffff" stroke-width="2" />
+  <circle cx="735" cy="376" r="5" fill="#3b82f6" />
+  <path d="M 728 386 Q 735 378 742 386" fill="none" stroke="#3b82f6" stroke-width="3" stroke-linecap="round" />
+  
+  <!-- Avatar 2 -->
+  <circle cx="755" cy="380" r="16" fill="#c7d2fe" stroke="#ffffff" stroke-width="2" />
+  <circle cx="755" cy="376" r="5" fill="#4f46e5" />
+  <path d="M 748 386 Q 755 378 762 386" fill="none" stroke="#4f46e5" stroke-width="3" stroke-linecap="round" />
+  
+  <!-- Avatar 3 -->
+  <circle cx="775" cy="380" r="16" fill="#e0e7ff" stroke="#ffffff" stroke-width="2" />
+  <circle cx="775" cy="376" r="5" fill="#2563eb" />
+  <path d="M 768 386 Q 775 378 782 386" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round" />
+
+</svg>

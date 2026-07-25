@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Complaint Alert — SCMS Admin</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #0F172A; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
+    .email-wrapper { padding: 40px 16px; background-color: #0F172A; }
+    .email-card { background-color: #1E293B; border-radius: 16px; max-width: 580px; margin: 0 auto; overflow: hidden; box-shadow: 0 4px 32px rgba(0,0,0,0.4); border: 1px solid #334155; }
+    .header { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); padding: 40px 48px; text-align: center; border-bottom: 1px solid #334155; }
+    .admin-badge { display: inline-block; background: #DC2626; color: #ffffff; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 4px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 16px; }
+    .logo { font-size: 22px; font-weight: 800; color: #F1F5F9; }
+    .logo span { color: #4F46E5; }
+    .header-title { color: #94A3B8; font-size: 14px; margin-top: 8px; }
+    .alert-strip { background: #DC2626; padding: 12px 48px; }
+    .alert-text { color: #ffffff; font-size: 13px; font-weight: 600; text-align: center; }
+    .body { padding: 40px 48px; }
+    .greeting { font-size: 20px; font-weight: 700; color: #F1F5F9; margin: 0 0 16px; }
+    .text { font-size: 14px; line-height: 1.7; color: #94A3B8; margin: 0 0 24px; }
+    .complaint-card { background: #0F172A; border: 1px solid #334155; border-radius: 12px; overflow: hidden; margin: 24px 0; }
+    .complaint-header { background: #1E293B; padding: 16px 24px; border-bottom: 1px solid #334155; }
+    .complaint-id { font-size: 12px; color: #4F46E5; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .complaint-title { font-size: 16px; font-weight: 700; color: #F1F5F9; margin-top: 4px; }
+    .priority-high { color: #EF4444; }
+    .priority-medium { color: #F59E0B; }
+    .priority-low { color: #10B981; }
+    .cta-container { text-align: center; margin: 32px 0; }
+    .cta-button { display: inline-block; background: linear-gradient(135deg, #4338CA 0%, #6D28D9 100%); color: #ffffff !important; text-decoration: none; font-size: 14px; font-weight: 600; padding: 14px 36px; border-radius: 8px; }
+    .footer { background: #0F172A; padding: 24px 48px; border-top: 1px solid #334155; }
+    .footer-text { font-size: 12px; color: #475569; line-height: 1.7; margin: 0; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="email-wrapper">
+    <table class="email-card" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td class="header">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td align="center">
+              <span class="admin-badge">Admin Alert</span><br />
+              <div class="logo">SCMS<span>.</span></div>
+              <div class="header-title">Smart Complaint Management System</div>
+            </td></tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td class="alert-strip">
+          <div class="alert-text">🚨 New complaint requires attention</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="body">
+          <p class="greeting">New complaint submitted</p>
+          <p class="text">
+            A new complaint has been submitted on <strong style="color:#F1F5F9;">{{submittedAt}}</strong>
+            and requires your review and assignment.
+          </p>
+          <div class="complaint-card">
+            <div class="complaint-header">
+              <div class="complaint-id">ID: #{{complaintId}}</div>
+              <div class="complaint-title">{{complaintTitle}}</div>
+            </div>
+            <table width="100%" cellpadding="0" cellspacing="0" style="padding:0;">
+              <tr>
+                <td style="padding:12px 24px;border-bottom:1px solid #1E293B;">
+                  <span style="font-size:13px;color:#64748B;font-weight:500;">Submitted By</span>
+                  <span style="float:right;font-size:13px;color:#94A3B8;font-weight:600;">{{submittedBy}}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:12px 24px;border-bottom:1px solid #1E293B;">
+                  <span style="font-size:13px;color:#64748B;font-weight:500;">Category</span>
+                  <span style="float:right;font-size:13px;color:#94A3B8;font-weight:600;">{{complaintCategory}}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:12px 24px;border-bottom:1px solid #1E293B;">
+                  <span style="font-size:13px;color:#64748B;font-weight:500;">Location</span>
+                  <span style="float:right;font-size:13px;color:#94A3B8;font-weight:600;">{{complaintLocation}}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:12px 24px;">
+                  <span style="font-size:13px;color:#64748B;font-weight:500;">Priority</span>
+                  <span style="float:right;font-size:13px;font-weight:700;color:#EF4444;">{{complaintPriority}}</span>
+                </td>
+              </tr>
+            </table>
+          </div>
+          <div class="cta-container">
+            <a href="{{adminComplaintUrl}}" class="cta-button" target="_blank">Review &amp; Assign Complaint →</a>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td class="footer">
+          <p class="footer-text">
+            © {{year}} SCMS Admin Panel · This is a confidential admin notification.<br />
+            Do not forward this email outside the administrative team.
+          </p>
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>
