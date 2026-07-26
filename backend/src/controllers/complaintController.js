@@ -23,6 +23,7 @@ import {
   imagesDeletedEvent,
   departmentAssignedEvent,
   memberAssignedEvent,
+  statusUpdatedEvent,
 } from "../utils/timelineHelper.js";
 import { notificationService } from "../notifications/services/NotificationService.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -561,6 +562,85 @@ export const assignComplaintToMember = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     message: "Complaint assigned to department member successfully",
+    complaint,
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UPDATE COMPLAINT STATUS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * @desc    Update complaint status (Admin only)
+ * @route   PATCH /api/complaints/:id/status
+ * @access  Private/Admin
+ */
+export const updateComplaintStatus = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  const allowedStatuses = ["Pending", "In Progress", "Resolved", "Closed"];
+
+  if (!status || !allowedStatuses.includes(status)) {
+    throw ApiError.badRequest(
+      `Invalid status value. Allowed values: ${allowedStatuses.join(", ")}`,
+    );
+  }
+
+  // 1. Validate that complaint exists
+  const complaint = await Complaint.findById(id);
+  if (!complaint) {
+    throw ApiError.notFound("Complaint not found");
+  }
+
+  const previousStatus = complaint.status;
+
+  // 2. Update only complaint.status
+  complaint.status = status;
+
+  // 3. Append a STATUS_UPDATED timeline event
+  complaint.timeline.push(
+    statusUpdatedEvent(req.user.id, req.user.role || "admin", {
+      previousStatus,
+      newStatus: status,
+    }),
+  );
+
+  // 4. Save complaint
+  await complaint.save();
+
+  // ─── Notifications (non-blocking / fire-and-forget) ───────────────────────
+  User.findById(complaint.createdBy)
+    .then((ownerUser) => {
+      if (ownerUser) {
+        fireNotification(
+          notificationService.sendComplaintStatusUpdated(
+            ownerUser,
+            complaint,
+            previousStatus,
+          ),
+        );
+      }
+    })
+    .catch((err) =>
+      logger.error({
+        message: "Failed to dispatch complaint status update notification",
+        error: err.message,
+      }),
+    );
+
+  logger.info({
+    message: "Complaint status updated successfully",
+    complaintId: complaint._id,
+    previousStatus,
+    newStatus: status,
+    updatedBy: req.user.id,
+  });
+
+  // 5. Return updated complaint
+  res.status(200).json({
+    success: true,
+    message: "Complaint status updated successfully",
     complaint,
   });
 });

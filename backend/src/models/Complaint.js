@@ -42,7 +42,7 @@ const complaintSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["Pending", "In Progress", "Resolved"],
+      enum: ["Pending", "In Progress", "Resolved", "Closed"],
       default: "Pending",
     },
 
@@ -69,6 +69,7 @@ const complaintSchema = new mongoose.Schema(
             "IMAGES_UPLOADED",
             "IMAGES_DELETED",
             "STATUS_CHANGED",
+            "STATUS_UPDATED",
             "COMPLAINT_ASSIGNED",
             "DEPARTMENT_ASSIGNED",
             "MEMBER_ASSIGNED",

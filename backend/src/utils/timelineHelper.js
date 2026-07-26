@@ -92,6 +92,24 @@ export const statusChangedEvent = (userId, role = "admin", { oldStatus, newStatu
     metadata: { oldStatus, newStatus },
   });
 
+export const statusUpdatedEvent = (
+  userId,
+  role = "admin",
+  { previousStatus, newStatus } = {},
+) =>
+  createTimelineEvent({
+    type: "STATUS_UPDATED",
+    title: "Status Updated",
+    description: `${previousStatus} → ${newStatus}`,
+    performedBy: userId,
+    performedByRole: role,
+    metadata: {
+      previousStatus,
+      newStatus,
+      updatedBy: userId,
+    },
+  });
+
 export const departmentAssignedEvent = (
   userId,
   role = "admin",

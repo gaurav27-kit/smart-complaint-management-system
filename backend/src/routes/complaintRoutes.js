@@ -11,6 +11,7 @@ import {
   deleteComplaint,
   assignDepartment,
   assignComplaintToMember,
+  updateComplaintStatus,
 } from "../controllers/complaintController.js";
 
 const router = express.Router();
@@ -20,6 +21,12 @@ router.get("/", authMiddleware, getMyComplaints);
 router.get("/:id", authMiddleware, getComplaintById);
 router.get("/:id/timeline", authMiddleware, getComplaintTimeline);
 
+router.patch(
+  "/:id/status",
+  authMiddleware,
+  adminMiddleware,
+  updateComplaintStatus,
+);
 router.patch(
   "/:id/assign-department",
   authMiddleware,
