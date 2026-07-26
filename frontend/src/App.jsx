@@ -18,6 +18,10 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 import UserLayout from "./layouts/UserLayout";
 import AdminLayout from "./layouts/AdminLayout";
 import AllComplaints from "./pages/admin/AllComplaints";
+
+import MemberDashboard from "./pages/member/Dashboard";
+import DepartmentMemberLayout from "./layouts/DepartmentMemberLayout";
+
 function App() {
   return (
     <BrowserRouter>
@@ -41,6 +45,18 @@ function App() {
           <Route path="create-complaint" element={<CreateComplaint />} />
           <Route path="my-complaints" element={<MyComplaints />} />
           <Route path="edit-complaint/:id" element={<EditComplaint />} />
+        </Route>
+
+        {/* Department Member Protected Routes */}
+        <Route
+          path="/member"
+          element={
+            <ProtectedRoute>
+              <DepartmentMemberLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<MemberDashboard />} />
         </Route>
 
         {/* Admin Protected Routes */}
