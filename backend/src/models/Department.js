@@ -80,6 +80,7 @@ departmentSchema.index({ name: 1 }, { unique: true });
 departmentSchema.index({ code: 1 }, { unique: true });
 departmentSchema.index({ isActive: 1 });
 
-const Department = mongoose.model("Department", departmentSchema);
+const Department =
+  mongoose.models.Department || mongoose.model("Department", departmentSchema);
 
 export default Department;

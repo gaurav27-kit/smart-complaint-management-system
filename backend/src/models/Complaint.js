@@ -97,6 +97,29 @@ const complaintSchema = new mongoose.Schema(
       generatedAt: { type: Date }
     },
 
+    department: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Department",
+      default: null,
+    },
+
+    assignedMember: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "DepartmentMember",
+      default: null,
+    },
+
+    assignedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    assignedAt: {
+      type: Date,
+      default: null,
+    },
+
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -108,6 +131,7 @@ const complaintSchema = new mongoose.Schema(
   },
 );
 
-const Complaint = mongoose.model("Complaint", complaintSchema);
+const Complaint =
+  mongoose.models.Complaint || mongoose.model("Complaint", complaintSchema);
 
 export default Complaint;

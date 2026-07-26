@@ -12,6 +12,8 @@
  */
 
 import Complaint from "../models/Complaint.js";
+import Department from "../models/Department.js";
+import DepartmentMember from "../models/DepartmentMember.js";
 import User from "../models/User.js";
 import { uploadToCloudinary, deleteMultipleFromCloudinary } from "../utils/cloudinaryUpload.js";
 import {
@@ -356,5 +358,137 @@ export const deleteComplaint = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     message: "Complaint deleted successfully",
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ASSIGN DEPARTMENT TO COMPLAINT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * @desc    Assign a department to a complaint
+ * @route   PATCH /api/complaints/:id/assign-department
+ * @access  Private/Admin
+ */
+export const assignDepartment = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { departmentId } = req.body;
+
+  if (!departmentId) {
+    throw ApiError.badRequest("Department ID is required");
+  }
+
+  // Validate that complaint exists
+  const complaint = await Complaint.findById(id);
+  if (!complaint) {
+    throw ApiError.notFound("Complaint not found");
+  }
+
+  // Validate that department exists
+  const department = await Department.findById(departmentId);
+  if (!department) {
+    throw ApiError.notFound("Department not found");
+  }
+
+  // Prevent reassignment if complaint already belongs to the same department
+  if (complaint.department && complaint.department.toString() === departmentId.toString()) {
+    throw ApiError.badRequest("Complaint is already assigned to this department");
+  }
+
+  // Update only the complaint's department field
+  complaint.department = department._id;
+  await complaint.save();
+
+  logger.info({
+    message: "Department assigned to complaint successfully",
+    complaintId: complaint._id,
+    departmentId: department._id,
+    assignedBy: req.user?.id,
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Department assigned successfully",
+    complaint,
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ASSIGN COMPLAINT TO DEPARTMENT MEMBER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * @desc    Assign a complaint to a specific department member
+ * @route   PATCH /api/complaints/:id/assign-member
+ * @access  Private/Admin
+ */
+export const assignComplaintToMember = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { memberId } = req.body;
+
+  if (!memberId) {
+    throw ApiError.badRequest("Department member ID is required");
+  }
+
+  // 1. Validate that complaint exists
+  const complaint = await Complaint.findById(id);
+  if (!complaint) {
+    throw ApiError.notFound("Complaint not found");
+  }
+
+  // 2. Validate that complaint has a department assigned
+  if (!complaint.department) {
+    throw ApiError.badRequest(
+      "Complaint must be assigned to a department before assigning a member"
+    );
+  }
+
+  // 3. Validate that DepartmentMember exists
+  const member = await DepartmentMember.findById(memberId);
+  if (!member) {
+    throw ApiError.notFound("Department member not found");
+  }
+
+  // 4. Validate that DepartmentMember belongs to the same department as the complaint
+  if (member.department.toString() !== complaint.department.toString()) {
+    throw ApiError.badRequest(
+      "Department member does not belong to the complaint's department"
+    );
+  }
+
+  // 5. Prevent assigning the same member twice
+  if (
+    complaint.assignedMember &&
+    complaint.assignedMember.toString() === memberId.toString()
+  ) {
+    throw ApiError.badRequest("Complaint is already assigned to this member");
+  }
+
+  // 6. Update only assignedMember, assignedBy, assignedAt
+  complaint.assignedMember = member._id;
+  complaint.assignedBy = req.user?.id;
+  complaint.assignedAt = new Date();
+
+  await complaint.save();
+
+  // Populate department and assignedMember for client response
+  await complaint.populate("department", "name code");
+  await complaint.populate({
+    path: "assignedMember",
+    populate: { path: "user", select: "fullName email role" },
+  });
+
+  logger.info({
+    message: "Complaint assigned to department member successfully",
+    complaintId: complaint._id,
+    departmentId: complaint.department._id || complaint.department,
+    assignedMemberId: member._id,
+    assignedBy: req.user?.id,
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Complaint assigned to department member successfully",
+    complaint,
   });
 });

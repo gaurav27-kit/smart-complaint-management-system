@@ -99,6 +99,6 @@ userSchema.index(
   { sparse: true, name: "password_reset_token_idx" },
 );
 
-const User = mongoose.model("User", userSchema);
+const User = mongoose.models.User || mongoose.model("User", userSchema);
 
 export default User;

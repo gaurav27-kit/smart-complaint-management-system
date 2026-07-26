@@ -20,6 +20,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import departmentRoutes from "./routes/departmentRoutes.js";
+import departmentMemberRoutes from "./routes/departmentMemberRoutes.js";
 import authMiddleware from "./middleware/authMiddleware.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { ApiError } from "./utils/apiError.js";
@@ -69,6 +70,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/departments", departmentRoutes);
+app.use("/api/departments", departmentMemberRoutes);
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get("/", (req, res) => {
