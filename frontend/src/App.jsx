@@ -20,6 +20,7 @@ import AdminLayout from "./layouts/AdminLayout";
 import AllComplaints from "./pages/admin/AllComplaints";
 
 import MemberDashboard from "./pages/member/Dashboard";
+import AssignedComplaints from "./pages/member/AssignedComplaints";
 import DepartmentMemberLayout from "./layouts/DepartmentMemberLayout";
 
 function App() {
@@ -57,6 +58,7 @@ function App() {
           }
         >
           <Route index element={<MemberDashboard />} />
+          <Route path="assigned-complaints" element={<AssignedComplaints />} />
         </Route>
 
         {/* Admin Protected Routes */}
