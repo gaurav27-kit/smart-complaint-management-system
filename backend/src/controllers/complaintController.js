@@ -410,6 +410,20 @@ export const assignDepartment = asyncHandler(async (req, res) => {
   );
   await complaint.save();
 
+  // ─── Notifications (non-blocking) ─────────────────────────────────────────
+  User.findById(complaint.createdBy)
+    .then((user) => {
+      if (user) {
+        fireNotification(notificationService.sendComplaintAssigned(user, complaint));
+      }
+    })
+    .catch((err) =>
+      logger.error({
+        message: "Failed to dispatch department assignment notification",
+        error: err.message,
+      }),
+    );
+
   logger.info({
     message: "Department assigned to complaint successfully",
     complaintId: complaint._id,
