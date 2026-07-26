@@ -516,6 +516,40 @@ export const assignComplaintToMember = asyncHandler(async (req, res) => {
     populate: { path: "user", select: "fullName email role" },
   });
 
+  // ─── Notifications (non-blocking) ─────────────────────────────────────────
+  // 1. Notify complaint owner (citizen)
+  User.findById(complaint.createdBy)
+    .then((ownerUser) => {
+      if (ownerUser) {
+        fireNotification(
+          notificationService.sendComplaintAssigned(ownerUser, complaint),
+        );
+      }
+    })
+    .catch((err) =>
+      logger.error({
+        message: "Failed to dispatch complaint owner notification for member assignment",
+        error: err.message,
+      }),
+    );
+
+  // 2. Notify assigned department member
+  const memberUserId = member.user?._id || member.user;
+  User.findById(memberUserId)
+    .then((memberUser) => {
+      if (memberUser) {
+        fireNotification(
+          notificationService.sendComplaintAssignedToMember(memberUser, complaint),
+        );
+      }
+    })
+    .catch((err) =>
+      logger.error({
+        message: "Failed to dispatch department member assignment notification",
+        error: err.message,
+      }),
+    );
+
   logger.info({
     message: "Complaint assigned to department member successfully",
     complaintId: complaint._id,

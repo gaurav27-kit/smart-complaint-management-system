@@ -306,6 +306,31 @@ class NotificationService {
   }
 
   /**
+   * Notify assigned department member that a complaint has been assigned to them.
+   * @param {object} memberUser - User document of the department member
+   * @param {object} complaint - Complaint document
+   */
+  async sendComplaintAssignedToMember(memberUser, complaint) {
+    return this.dispatch({
+      recipient: memberUser,
+      type: "MEMBER_COMPLAINT_ASSIGNED",
+      subject: `New complaint assigned to you: ${complaint.title} — SCMS`,
+      templateName: "memberComplaintAssigned",
+      templateVars: {
+        userName: memberUser.fullName,
+        complaintId: complaint._id.toString().slice(-8).toUpperCase(),
+        complaintTitle: complaint.title,
+        complaintCategory: complaint.category,
+        complaintPriority: complaint.priority,
+        complaintLocation: complaint.location || "N/A",
+        assignedAt: formatDate(),
+        complaintUrl: `${BASE_URL}/complaints/${complaint._id}`,
+      },
+      metadata: { complaintId: complaint._id },
+    });
+  }
+
+  /**
    * Notify user that their complaint status has changed.
    * @param {object} user - The complaint owner
    * @param {object} complaint - Complaint document (post-update)
