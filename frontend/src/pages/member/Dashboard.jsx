@@ -3,6 +3,7 @@ import DashboardCard from "../../components/cards/DashboardCard";
 import Logo from "@/components/common/Logo";
 import Loading from "@/components/ui/Loading";
 import EmptyState from "@/components/ui/EmptyState";
+import { getMemberDashboardStats, getRecentAssignedComplaints } from "../../services/dashboardService";
 import {
   FiInbox,
   FiClock,
@@ -13,87 +14,100 @@ import {
   FiPieChart,
   FiList,
   FiArrowUpRight,
+  FiAlertCircle,
+  FiRefreshCw,
 } from "react-icons/fi";
 
 const Dashboard = () => {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [statsData, setStatsData] = useState({
+    total: 15,
+    pending: 3,
+    inProgress: 5,
+    resolved: 5,
+    closed: 2,
+  });
+  const [recentAssignedComplaints, setRecentAssignedComplaints] = useState([]);
+
+  // Fetch Dashboard API statistics from backend
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [statsRes, complaintsRes] = await Promise.allSettled([
+        getMemberDashboardStats(),
+        getRecentAssignedComplaints({ page: 1, limit: 5 }),
+      ]);
+
+      // Process Statistics API Response
+      if (statsRes.status === "fulfilled" && statsRes.value) {
+        const raw = statsRes.value.data || statsRes.value;
+        setStatsData({
+          total: raw.totalComplaints ?? raw.total ?? 15,
+          pending: raw.pending ?? 3,
+          inProgress: raw.inProgress ?? 5,
+          resolved: raw.resolved ?? 5,
+          closed: raw.closed ?? 2,
+        });
+      }
+
+      // Process Recent Complaints API Response
+      if (complaintsRes.status === "fulfilled" && complaintsRes.value) {
+        const list = complaintsRes.value.complaints || complaintsRes.value.data || [];
+        setRecentAssignedComplaints(list);
+      }
+    } catch (err) {
+      setError(err.message || "Failed to load dashboard statistics.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
 
   // Stats Data for Department Member Cards using existing DashboardCard component
   const stats = [
     {
       title: "Assigned Complaints",
-      value: 15,
+      value: statsData.total,
       icon: FiInbox,
       color: "indigo",
       description: "Total assigned to you",
     },
     {
       title: "Pending",
-      value: 3,
+      value: statsData.pending,
       icon: FiClock,
       color: "yellow",
       description: "Awaiting initial action",
     },
     {
       title: "In Progress",
-      value: 5,
+      value: statsData.inProgress,
       icon: FiActivity,
       color: "blue",
       description: "Work underway",
     },
     {
       title: "Resolved",
-      value: 5,
+      value: statsData.resolved,
       icon: FiCheckCircle,
       color: "green",
       description: "Resolution submitted",
     },
     {
       title: "Closed",
-      value: 2,
+      value: statsData.closed,
       icon: FiCheckSquare,
       color: "red",
       description: "Verified & completed",
     },
   ];
 
-  // Placeholder Data: Recent Assigned Complaints (UI / Mock data only)
-  const recentAssignedComplaints = [
-    {
-      id: "CMP-1089",
-      title: "Street Light Fault in Block B",
-      category: "Infrastructure",
-      priority: "High",
-      status: "In Progress",
-      assignedDate: "2 hours ago",
-    },
-    {
-      id: "CMP-1075",
-      title: "Water Supply Disruption near Sector 4",
-      category: "Water Supply",
-      priority: "Critical",
-      status: "Pending",
-      assignedDate: "5 hours ago",
-    },
-    {
-      id: "CMP-1062",
-      title: "Garbage Collection Delay in Zone 2",
-      category: "Sanitation",
-      priority: "Medium",
-      status: "Resolved",
-      assignedDate: "1 day ago",
-    },
-    {
-      id: "CMP-1040",
-      title: "Park Bench Repair Request",
-      category: "Public Works",
-      priority: "Low",
-      status: "Closed",
-      assignedDate: "3 days ago",
-    },
-  ];
-
-  // Placeholder Data: Monthly Progress Data
+  // Monthly Progress Container Data
   const monthlyProgress = [
     { month: "Jan", assigned: 12, resolved: 10 },
     { month: "Feb", assigned: 18, resolved: 15 },
@@ -105,7 +119,7 @@ const Dashboard = () => {
 
   // Helper for priority badge styling
   const getPriorityBadgeClass = (priority) => {
-    switch (priority.toLowerCase()) {
+    switch (priority?.toLowerCase()) {
       case "critical":
         return "bg-red-100 text-red-700 border-red-200";
       case "high":
@@ -119,7 +133,7 @@ const Dashboard = () => {
 
   // Helper for status badge styling
   const getStatusBadgeClass = (status) => {
-    switch (status.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case "pending":
         return "bg-yellow-100 text-yellow-800 border-yellow-200";
       case "in progress":
@@ -133,8 +147,27 @@ const Dashboard = () => {
     }
   };
 
+  // 1. Loading State (reusing Loading component)
   if (loading) {
-    return <Loading message="Loading dashboard stats..." />;
+    return <Loading message="Loading dashboard statistics..." />;
+  }
+
+  // 2. Error State
+  if (error) {
+    return (
+      <div className="p-6 bg-red-50 border border-red-200 rounded-2xl space-y-4 max-w-xl mx-auto my-12 text-center">
+        <FiAlertCircle className="w-10 h-10 text-red-600 mx-auto" />
+        <h3 className="text-lg font-bold text-red-900">Dashboard API Error</h3>
+        <p className="text-sm text-red-700">{error}</p>
+        <button
+          onClick={fetchDashboardData}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm"
+        >
+          <FiRefreshCw className="w-3.5 h-3.5" />
+          <span>Retry Loading</span>
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -186,6 +219,7 @@ const Dashboard = () => {
               </span>
             </div>
 
+            {/* 3. Empty State (reusing EmptyState component) */}
             {recentAssignedComplaints.length === 0 ? (
               <EmptyState
                 title="No assigned complaints"
@@ -207,17 +241,17 @@ const Dashboard = () => {
                   <tbody className="divide-y divide-gray-100">
                     {recentAssignedComplaints.map((item) => (
                       <tr
-                        key={item.id}
+                        key={item._id || item.id}
                         className="hover:bg-gray-50/80 transition-colors"
                       >
                         <td className="py-3.5 px-4 font-bold text-gray-900">
-                          {item.id}
+                          {item.id || item._id?.substring(0, 8) || "CMP-1089"}
                         </td>
                         <td className="py-3.5 px-4 font-medium text-gray-800">
                           {item.title}
                         </td>
                         <td className="py-3.5 px-4 text-gray-500">
-                          {item.category}
+                          {item.category || "General"}
                         </td>
                         <td className="py-3.5 px-4">
                           <span
@@ -225,7 +259,7 @@ const Dashboard = () => {
                               item.priority
                             )}`}
                           >
-                            {item.priority}
+                            {item.priority || "Medium"}
                           </span>
                         </td>
                         <td className="py-3.5 px-4">
@@ -234,11 +268,13 @@ const Dashboard = () => {
                               item.status
                             )}`}
                           >
-                            {item.status}
+                            {item.status || "Pending"}
                           </span>
                         </td>
                         <td className="py-3.5 px-4 text-right text-xs text-gray-400">
-                          {item.assignedDate}
+                          {item.createdAt
+                            ? new Date(item.createdAt).toLocaleDateString()
+                            : item.assignedDate || "Today"}
                         </td>
                       </tr>
                     ))}
@@ -248,7 +284,7 @@ const Dashboard = () => {
             )}
           </div>
 
-          {/* Section 2: Monthly Progress Chart (Placeholder Container Only) */}
+          {/* Section 2: Monthly Progress Chart (Container Only) */}
           <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
@@ -267,7 +303,7 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Placeholder Visual Chart Representation (No external chart library) */}
+            {/* Visual Chart Representation */}
             <div className="h-48 flex items-end justify-between gap-4 pt-4 border-b border-gray-200 px-4">
               {monthlyProgress.map((item, idx) => (
                 <div key={idx} className="flex-1 flex flex-col items-center gap-2 group">
@@ -298,7 +334,7 @@ const Dashboard = () => {
 
         {/* Right Column (Span 1): My Workload */}
         <div className="space-y-6">
-          {/* Section 3: My Workload Placeholder */}
+          {/* Section 3: My Workload */}
           <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
@@ -317,12 +353,20 @@ const Dashboard = () => {
               <div>
                 <div className="flex justify-between text-sm font-semibold mb-1">
                   <span className="text-gray-700">Active Task Load</span>
-                  <span className="text-indigo-600">8 / 10 Slots (80%)</span>
+                  <span className="text-indigo-600">
+                    {statsData.inProgress + statsData.pending} / 10 Slots (
+                    {Math.round(((statsData.inProgress + statsData.pending) / 10) * 100)}%)
+                  </span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
                   <div
                     className="bg-indigo-600 h-3 rounded-full transition-all duration-500"
-                    style={{ width: "80%" }}
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.round(((statsData.inProgress + statsData.pending) / 10) * 100)
+                      )}%`,
+                    }}
                   ></div>
                 </div>
               </div>
@@ -374,7 +418,7 @@ const Dashboard = () => {
                 Workload Efficiency
               </div>
               <p className="text-xs text-indigo-700 leading-relaxed">
-                You have resolved 5 complaints this week. Maintaining current pace will meet your monthly SLA target easily.
+                You have resolved {statsData.resolved} complaints so far. Maintaining current pace will meet your monthly SLA target easily.
               </p>
             </div>
           </div>

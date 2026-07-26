@@ -128,6 +128,31 @@ const complaintSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+
+    notes: {
+      type: [
+        {
+          author: { type: String, required: true },
+          text: { type: String, required: true },
+          createdAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
+
+    resolutionProof: {
+      type: [
+        {
+          url: { type: String, required: true },
+          publicId: { type: String },
+          fileName: { type: String },
+          fileType: { type: String },
+          size: { type: Number },
+          uploadedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
   },
   {
     timestamps: true,
