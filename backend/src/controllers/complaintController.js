@@ -21,6 +21,8 @@ import {
   complaintUpdatedEvent,
   imagesUploadedEvent,
   imagesDeletedEvent,
+  departmentAssignedEvent,
+  memberAssignedEvent,
 } from "../utils/timelineHelper.js";
 import { notificationService } from "../notifications/services/NotificationService.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -184,10 +186,13 @@ export const getMyComplaints = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const getComplaintById = asyncHandler(async (req, res) => {
-  const complaint = await Complaint.findOne({
-    _id: req.params.id,
-    createdBy: req.user.id,
-  });
+  const query = { _id: req.params.id };
+
+  if (req.user?.role !== "admin") {
+    query.createdBy = req.user.id;
+  }
+
+  const complaint = await Complaint.findOne(query);
 
   if (!complaint) {
     throw ApiError.notFound("Complaint not found");
@@ -395,8 +400,14 @@ export const assignDepartment = asyncHandler(async (req, res) => {
     throw ApiError.badRequest("Complaint is already assigned to this department");
   }
 
-  // Update only the complaint's department field
+  // Update the complaint's department field and append timeline event
   complaint.department = department._id;
+  complaint.timeline.push(
+    departmentAssignedEvent(req.user.id, req.user.role || "admin", {
+      departmentId: department._id,
+      departmentName: department.name,
+    }),
+  );
   await complaint.save();
 
   logger.info({
@@ -464,10 +475,23 @@ export const assignComplaintToMember = asyncHandler(async (req, res) => {
     throw ApiError.badRequest("Complaint is already assigned to this member");
   }
 
-  // 6. Update only assignedMember, assignedBy, assignedAt
+  // 6. Update assignedMember, assignedBy, assignedAt, and timeline
   complaint.assignedMember = member._id;
   complaint.assignedBy = req.user?.id;
   complaint.assignedAt = new Date();
+
+  await member.populate("user", "fullName");
+  await member.populate("department", "name");
+
+  complaint.timeline.push(
+    memberAssignedEvent(req.user.id, req.user.role || "admin", {
+      memberId: member._id,
+      memberName: member.user?.fullName,
+      departmentId: member.department?._id || member.department,
+      departmentName: member.department?.name,
+      departmentRole: member.deptRole,
+    }),
+  );
 
   await complaint.save();
 

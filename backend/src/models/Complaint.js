@@ -70,6 +70,8 @@ const complaintSchema = new mongoose.Schema(
             "IMAGES_DELETED",
             "STATUS_CHANGED",
             "COMPLAINT_ASSIGNED",
+            "DEPARTMENT_ASSIGNED",
+            "MEMBER_ASSIGNED",
             "ADMIN_COMMENT",
             "PRIORITY_CHANGED",
             "COMPLAINT_RESOLVED",

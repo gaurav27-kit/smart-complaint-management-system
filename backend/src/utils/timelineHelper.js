@@ -91,3 +91,38 @@ export const statusChangedEvent = (userId, role = "admin", { oldStatus, newStatu
     performedByRole: role,
     metadata: { oldStatus, newStatus },
   });
+
+export const departmentAssignedEvent = (
+  userId,
+  role = "admin",
+  { departmentId, departmentName } = {},
+) =>
+  createTimelineEvent({
+    type: "DEPARTMENT_ASSIGNED",
+    title: "Department Assigned",
+    description: `Complaint assigned to ${departmentName}.`,
+    performedBy: userId,
+    performedByRole: role || "admin",
+    metadata: { departmentId, departmentName },
+  });
+
+export const memberAssignedEvent = (
+  userId,
+  role = "admin",
+  { memberId, memberName, departmentId, departmentName, departmentRole } = {},
+) =>
+  createTimelineEvent({
+    type: "MEMBER_ASSIGNED",
+    title: "Department Member Assigned",
+    description: `Complaint assigned to ${memberName}.`,
+    performedBy: userId,
+    performedByRole: role || "admin",
+    metadata: {
+      memberId,
+      memberName,
+      departmentId,
+      departmentName,
+      departmentRole,
+    },
+  });
+
