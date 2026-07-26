@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Eye, X, Search, Filter } from "lucide-react";
 import StatusBadge from "../../components/badges/StatusBadge";
 import Loading from "@/components/ui/Loading";
 import EmptyState from "@/components/ui/EmptyState";
 
 const AssignedComplaints = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
@@ -123,8 +125,7 @@ const AssignedComplaints = () => {
   }, [filteredComplaints, currentPage, itemsPerPage]);
 
   const handleOpenDetails = (complaint) => {
-    setSelectedComplaint(complaint);
-    setIsModalOpen(true);
+    navigate(`/member/complaints/${complaint.id}`);
   };
 
   const handleCloseDetails = () => {

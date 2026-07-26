@@ -21,6 +21,9 @@ import AllComplaints from "./pages/admin/AllComplaints";
 
 import MemberDashboard from "./pages/member/Dashboard";
 import AssignedComplaints from "./pages/member/AssignedComplaints";
+import ComplaintDetails from "./pages/member/ComplaintDetails";
+import MemberNotifications from "./pages/member/Notifications";
+import MemberWorkload from "./pages/member/MyWorkload";
 import DepartmentMemberLayout from "./layouts/DepartmentMemberLayout";
 
 function App() {
@@ -59,6 +62,9 @@ function App() {
         >
           <Route index element={<MemberDashboard />} />
           <Route path="assigned-complaints" element={<AssignedComplaints />} />
+          <Route path="complaints/:id" element={<ComplaintDetails />} />
+          <Route path="notifications" element={<MemberNotifications />} />
+          <Route path="workload" element={<MemberWorkload />} />
         </Route>
 
         {/* Admin Protected Routes */}

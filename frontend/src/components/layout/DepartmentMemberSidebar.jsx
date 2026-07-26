@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import Logo from "@/components/common/Logo";
 import { BRAND } from "@/constants/brand";
-import { FiChevronLeft, FiChevronRight, FiGrid, FiInbox, FiPieChart, FiKey } from "react-icons/fi";
+import { FiChevronLeft, FiChevronRight, FiGrid, FiInbox, FiPieChart, FiKey, FiBell } from "react-icons/fi";
 
 const DepartmentMemberSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -50,6 +50,13 @@ const DepartmentMemberSidebar = () => {
           <span className="flex items-center gap-3">
             <FiInbox className="text-lg shrink-0" />
             {!isCollapsed && <span className="text-sm truncate">Assigned Complaints</span>}
+          </span>
+        </NavLink>
+
+        <NavLink to="/member/notifications" className={linkClass}>
+          <span className="flex items-center gap-3">
+            <FiBell className="text-lg shrink-0" />
+            {!isCollapsed && <span className="text-sm truncate">Notifications</span>}
           </span>
         </NavLink>
 
