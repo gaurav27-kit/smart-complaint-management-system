@@ -1,0 +1,100 @@
+# ─── SCMS — Docker Compose (Development) ─────────────────────────────────────
+# Orchestrates the React frontend and Express backend containers.
+#
+# Usage:
+#   docker compose build        # Build both images
+#   docker compose up           # Start all services
+#   docker compose up -d        # Start in detached (background) mode
+#   docker compose down         # Stop and remove containers
+#   docker compose logs -f      # Tail logs from all services
+#
+# Notes:
+#   - MongoDB Atlas is NOT containerised; connection is supplied via backend/.env
+#   - Development volumes enable live reload / HMR without image rebuilds
+#   - node_modules volumes prevent the host's node_modules from shadowing the
+#     container's installed packages (a common pitfall on Windows hosts)
+
+services:
+
+  # ─── Backend (Express + Node.js) ───────────────────────────────────────────
+  backend:
+    container_name: scms-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+    # Load all secrets from the existing .env file — never hardcoded here.
+    # Users must ensure MONGO_URI points to their MongoDB Atlas connection string.
+    env_file:
+      - ./backend/.env
+
+    ports:
+      - "5000:5000"
+
+    # ─── Development Volume ─────────────────────────────────────────────────
+    # Bind-mounts the host backend folder into the container so that any
+    # source file change is reflected immediately (no rebuild needed).
+    # The anonymous volume on node_modules preserves the container-installed
+    # packages and prevents the host node_modules from overwriting them.
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+    # Restart the container automatically after crashes or host reboots.
+    # "unless-stopped" means: restart always, EXCEPT when explicitly stopped
+    # with `docker compose stop` or `docker compose down`.
+    restart: unless-stopped
+
+    # ─── Health Check ───────────────────────────────────────────────────────
+    # Polls the backend's root health endpoint every 30 seconds.
+    # Container is marked "healthy" after 3 consecutive successes.
+    # start_period gives the app time to connect to MongoDB Atlas before
+    # health checks begin counting failures.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    networks:
+      - scms-net
+
+  # ─── Frontend (React + Vite → Nginx Production Build) ───────────────────────
+  frontend:
+    container_name: scms-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
+
+    ports:
+      - "8080:8080"
+
+    # Restart policy — same rationale as backend.
+    restart: unless-stopped
+
+    # ─── Health Check ───────────────────────────────────────────────────────
+    # Polls the Nginx /health endpoint every 30 seconds.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # Ensure the backend container is started before the frontend.
+    depends_on:
+      - backend
+
+    networks:
+      - scms-net
+
+# ─── Network ───────────────────────────────────────────────────────────────────
+# Custom bridge network so services discover each other by name (e.g. "backend")
+# and are isolated from other Docker containers on the host.
+networks:
+  scms-net:
+    driver: bridge

@@ -1,0 +1,36 @@
+# ─── SCMS Frontend — .dockerignore ────────────────────────────────────────────
+# Prevents unnecessary files from being sent to Docker build context.
+
+# Dependencies (installed inside the container via npm ci)
+node_modules/
+
+# Production build output (dev container uses Vite dev server, not dist/)
+dist/
+dist-ssr/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Git
+.git/
+.gitignore
+
+# Editor and IDE files
+.vscode/
+.idea/
+
+# Environment files (secrets injected via build ARGs only)
+.env
+.env.*
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

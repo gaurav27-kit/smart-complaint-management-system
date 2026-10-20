@@ -1,0 +1,36 @@
+# ─── SCMS Backend — .dockerignore ─────────────────────────────────────────────
+# Prevents unnecessary files from being sent to Docker build context.
+# This speeds up builds and keeps the image lean.
+
+# Dependencies (installed inside the container via npm ci)
+node_modules/
+
+# Environment secrets (injected at runtime via docker-compose env_file)
+.env
+.env.*
+!.env.example
+
+# Test artifacts and coverage reports
+coverage/
+tests/
+
+# Temporary AI test scripts (not part of core application)
+test-ai.js
+test-ai2.js
+test-ai3.js
+test-ai4.js
+
+# Logs
+*.log
+
+# Documentation
+*.md
+docs/
+
+# Git
+.git/
+.gitignore
+
+# OS artifacts
+.DS_Store
+Thumbs.db

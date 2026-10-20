@@ -5,8 +5,14 @@ backend/node_modules/
 
 # Environment Variables
 .env
+.env.*
 backend/.env
+backend/.env.*
 frontend/.env
+frontend/.env.*
+!.env.example
+!backend/.env.example
+!frontend/.env.example
 
 # Build folders
 dist/
@@ -23,3 +29,12 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Credentials & migration scratch scripts
+backend/credentials.json
+credentials.json
+*.json.bak
+backend/get_all_credentials.mjs
+backend/get_credentials.mjs
+backend/check_*.js
+backend/fetch_*.js
