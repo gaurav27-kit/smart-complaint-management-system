@@ -16,6 +16,9 @@ RUN npm ci
 
 # Copy source code and produce production bundle
 COPY . .
+
+# Increase Node heap for Vite bundling (large vendor chunks: pdf-lib, chart.js)
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
 # ─── Stage 2: Production Web Server (Non-root Nginx) ──────────────────────────
