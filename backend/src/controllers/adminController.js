@@ -16,11 +16,13 @@ import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import Complaint from "../models/Complaint.js";
 import { deleteMultipleFromCloudinary } from "../utils/cloudinaryUpload.js";
+import { COMPLAINT_STATUS_LIST } from "../constants/complaintConstants.js";
 import { statusChangedEvent } from "../utils/timelineHelper.js";
 import { notificationService } from "../notifications/services/NotificationService.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
 import logger from "../utils/logger.js";
+import { sanitizeSearchRegex } from "../utils/stringUtils.js";
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 const fireNotification = (promise) => {
@@ -40,7 +42,7 @@ const fireNotification = (promise) => {
  */
 export const getDashboardStats = asyncHandler(async (req, res) => {
   // Use Promise.all for concurrent queries — 6x faster than sequential
-  const [totalUsers, totalComplaints, pending, inProgress, resolved, highPriority, mediumPriority, lowPriority] =
+  const [totalUsers, totalComplaints, pending, inProgress, resolved, highPriority, mediumPriority, lowPriority, unassigned] =
     await Promise.all([
       User.countDocuments(),
       Complaint.countDocuments(),
@@ -50,6 +52,9 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       Complaint.countDocuments({ priority: "High" }),
       Complaint.countDocuments({ priority: "Medium" }),
       Complaint.countDocuments({ priority: "Low" }),
+      // Unassigned: complaints with no department (e.g. category "OTHER")
+      // These are invisible to all Department Heads — admin must manually assign them
+      Complaint.countDocuments({ department: null }),
     ]);
 
   res.status(200).json({
@@ -63,6 +68,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       highPriority,
       mediumPriority,
       lowPriority,
+      unassigned,
     },
   });
 });
@@ -77,21 +83,30 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
  * @access  Private/Admin
  */
 export const getAllComplaints = asyncHandler(async (req, res) => {
-  const { search, status, priority, category, sort, page = 1, limit = 10 } = req.query;
+  const { search, status, priority, category, sort, page = 1, limit = 10, unassigned } = req.query;
 
   const query = {};
 
   if (search) {
-    query.$or = [
-      { title: { $regex: search, $options: "i" } },
-      { description: { $regex: search, $options: "i" } },
-      { location: { $regex: search, $options: "i" } },
-    ];
+    const safeSearch = sanitizeSearchRegex(search);
+    if (safeSearch) {
+      query.$or = [
+        { title: { $regex: safeSearch, $options: "i" } },
+        { description: { $regex: safeSearch, $options: "i" } },
+        { location: { $regex: safeSearch, $options: "i" } },
+      ];
+    }
   }
 
   if (status) query.status = status;
   if (priority) query.priority = priority;
   if (category) query.category = category;
+
+  // Unassigned filter: show only complaints with no department (e.g. OTHER category)
+  // These are invisible to all Department Heads — admin must manually assign them
+  if (unassigned === "true") {
+    query.department = null;
+  }
 
   let sortOptions = { createdAt: -1 };
   if (sort === "oldest") sortOptions = { createdAt: 1 };
@@ -162,11 +177,9 @@ export const getComplaintById = asyncHandler(async (req, res) => {
 export const updateComplaintStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
 
-  const allowedStatus = ["Pending", "In Progress", "Resolved"];
-
-  if (!allowedStatus.includes(status)) {
+  if (!COMPLAINT_STATUS_LIST.includes(status)) {
     throw ApiError.badRequest(
-      `Invalid status value. Allowed values: ${allowedStatus.join(", ")}`,
+      `Invalid status value. Allowed values: ${COMPLAINT_STATUS_LIST.join(", ")}`,
     );
   }
 
@@ -266,7 +279,7 @@ export const deleteComplaint = asyncHandler(async (req, res) => {
  * @access  Private/Admin
  */
 export const getAnalytics = asyncHandler(async (req, res) => {
-  const { range = "month", startDate: qStart, endDate: qEnd } = req.query;
+  const { range = "all", startDate: qStart, endDate: qEnd } = req.query;
 
   let dateFilter = {};
 
@@ -282,27 +295,32 @@ export const getAnalytics = asyncHandler(async (req, res) => {
       end.setHours(23, 59, 59, 999);
       dateFilter.createdAt.$lte = end;
     }
+  } else if (range === "all") {
+    dateFilter = {};
   } else {
     const now = new Date();
     let startDate = new Date();
 
     if (range === "today") {
       startDate.setHours(0, 0, 0, 0);
+      dateFilter.createdAt = { $gte: startDate };
     } else if (range === "week") {
       const day = now.getDay();
       const diff = now.getDate() - day;
       startDate = new Date(now.setDate(diff));
       startDate.setHours(0, 0, 0, 0);
+      dateFilter.createdAt = { $gte: startDate };
     } else if (range === "year") {
       startDate = new Date(now.getFullYear(), 0, 1);
       startDate.setHours(0, 0, 0, 0);
-    } else {
-      // Default: month
+      dateFilter.createdAt = { $gte: startDate };
+    } else if (range === "month") {
       startDate = new Date(now.getFullYear(), now.getMonth(), 1);
       startDate.setHours(0, 0, 0, 0);
+      dateFilter.createdAt = { $gte: startDate };
+    } else {
+      dateFilter = {};
     }
-
-    dateFilter.createdAt = { $gte: startDate };
   }
 
   // Run all aggregations concurrently

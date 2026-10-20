@@ -4,6 +4,8 @@ import {
   buildComplaintAnalysisPrompt,
 } from "../prompts/complaintPrompt.js";
 
+import logger from "../utils/logger.js";
+
 class AIService {
   constructor() {
     this.provider = null;
@@ -20,9 +22,9 @@ class AIService {
     if (process.env.GEMINI_API_KEY) {
       this.provider = new GeminiProvider();
       this.initialized = true;
-      console.log("AI Service initialized using GeminiProvider");
+      logger.info({ message: "AI Service initialized using GeminiProvider" });
     } else {
-      console.warn("No AI API keys found. AI features will be disabled.");
+      logger.warn({ message: "No AI API keys found. AI features will be disabled." });
     }
   }
 

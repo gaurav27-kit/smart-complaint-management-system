@@ -6,8 +6,10 @@ const storage = multer.memoryStorage();
 // Strict MIME type whitelist
 const ALLOWED_MIMETYPES = new Set([
   "image/jpeg",
+  "image/jpg",
   "image/png",
   "image/webp",
+  "application/pdf",
 ]);
 
 const fileFilter = (_req, file, cb) => {
@@ -16,7 +18,7 @@ const fileFilter = (_req, file, cb) => {
   } else {
     cb(
       new Error(
-        `File type "${file.mimetype}" is not allowed. Only JPEG, PNG, and WEBP images are accepted.`
+        `File type "${file.mimetype}" is not allowed. Only JPEG, PNG, WEBP images, and PDF documents are accepted.`
       ),
       false
     );

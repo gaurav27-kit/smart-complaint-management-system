@@ -1,6 +1,7 @@
 import "dotenv/config";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import connectDB from "../config/db.js";
 import User from "../models/User.js";
 
 async function resetPassword() {
@@ -18,8 +19,7 @@ async function resetPassword() {
   }
 
   try {
-    const mongoUri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/scms";
-    await mongoose.connect(mongoUri);
+    await connectDB();
 
     const user = await User.findOne({ email: email.toLowerCase().trim() });
 
@@ -29,8 +29,9 @@ async function resetPassword() {
       process.exit(1);
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
     user.password = hashedPassword;
+    user.passwordChangedAt = new Date();
     await user.save();
 
     console.log(`✅ Success: Password for ${user.fullName} (${user.email}) [Role: ${user.role}] has been updated successfully!`);

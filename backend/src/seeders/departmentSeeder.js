@@ -9,6 +9,7 @@
  */
 
 import Department from "../models/Department.js";
+import User from "../models/User.js";
 import logger from "../utils/logger.js";
 
 const defaultDepartments = [
@@ -19,19 +20,19 @@ const defaultDepartments = [
     isActive: true,
   },
   {
-    name: "Water Supply",
+    name: "Water Department",
     code: "WATER",
     description: "Manages municipal water supply, pipeline leaks, pressure, and water quality.",
     isActive: true,
   },
   {
-    name: "Electricity",
+    name: "Electricity Department",
     code: "ELECTRIC",
     description: "Manages power grid, street lighting power, transformers, and power outages.",
     isActive: true,
   },
   {
-    name: "Garbage Management",
+    name: "Garbage Department",
     code: "GARBAGE",
     description: "Handles waste collection, dumping sites, recycling, and street sanitation.",
     isActive: true,
@@ -49,7 +50,7 @@ const defaultDepartments = [
     isActive: true,
   },
   {
-    name: "IT Support",
+    name: "IT Department",
     code: "IT",
     description: "Manages municipal IT infrastructure, online portal services, and digital support.",
     isActive: true,
@@ -70,20 +71,42 @@ export const seedDepartments = async ({ adminId } = {}) => {
   try {
     logger.info({ message: "Starting department seeding process..." });
 
-    for (const deptData of defaultDepartments) {
-      const existingDept = await Department.findOne({ code: deptData.code });
-
-      if (existingDept) {
-        skippedCount++;
-        continue;
+    let effectiveAdminId = adminId;
+    if (!effectiveAdminId) {
+      const adminUser = await User.findOne({ role: "admin" });
+      if (adminUser) {
+        effectiveAdminId = adminUser._id;
       }
+    }
 
-      await Department.create({
-        ...deptData,
-        ...(adminId && { createdBy: adminId }),
-      });
+    for (const deptData of defaultDepartments) {
+      try {
+        const existingDept = await Department.findOne({
+          $or: [
+            { code: deptData.code },
+            { name: deptData.name },
+            { name: new RegExp(`^${deptData.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") },
+          ],
+        });
 
-      seededCount++;
+        if (existingDept) {
+          skippedCount++;
+          continue;
+        }
+
+        await Department.create({
+          ...deptData,
+          ...(effectiveAdminId && { createdBy: effectiveAdminId }),
+        });
+
+        seededCount++;
+      } catch (deptErr) {
+        logger.warn({
+          message: `Department ${deptData.name} skipped during seed due to conflict`,
+          error: deptErr.message,
+        });
+        skippedCount++;
+      }
     }
 
     const summary = {

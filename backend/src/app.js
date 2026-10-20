@@ -13,6 +13,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
 
 import authRoutes from "./routes/authRoutes.js";
 import complaintRoutes from "./routes/complaintRoutes.js";
@@ -30,8 +31,59 @@ import logger from "./utils/logger.js";
 
 const app = express();
 
+// ─── Trust Proxy Configuration ────────────────────────────────────────────────
+// In production behind reverse proxies (Nginx, Docker, Cloudflare),
+// TRUST_PROXY enables express-rate-limit to extract the real client IP.
+const trustProxyEnv = process.env.TRUST_PROXY;
+if (trustProxyEnv !== undefined) {
+  if (trustProxyEnv === "true") app.set("trust proxy", true);
+  else if (trustProxyEnv === "false") app.set("trust proxy", false);
+  else if (!isNaN(Number(trustProxyEnv))) app.set("trust proxy", Number(trustProxyEnv));
+  else app.set("trust proxy", trustProxyEnv);
+} else if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
+
 // ─── Core Middleware ──────────────────────────────────────────────────────────
-app.use(cors());
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+  })
+);
+const configuredOrigins = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+const allowedOrigins = Array.from(
+  new Set(
+    [
+      process.env.CLIENT_URL,
+      process.env.FRONTEND_URL,
+      ...configuredOrigins,
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+    ].filter(Boolean)
+  )
+);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, server-to-server, health checks)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      callback(ApiError.forbidden(`CORS policy does not allow access from origin: ${origin}`));
+    },
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: "10mb" })); // Set limit to prevent DoS via huge payloads
 app.use(cookieParser());
 
@@ -71,8 +123,8 @@ app.use("/api/complaints", complaintRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/notifications", notificationRoutes);
-app.use("/api/departments", departmentRoutes);
 app.use("/api/departments", departmentMemberRoutes);
+app.use("/api/departments", departmentRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/member", memberRoutes);
 

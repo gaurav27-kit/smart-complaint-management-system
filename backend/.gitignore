@@ -3,14 +3,26 @@ node_modules/
 
 # Environment variables
 .env
+.env.*
+!.env.example
 
 # Logs
 *.log
 
-# Build output
+# Build & test output
 dist/
 build/
+coverage/
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# Credentials & migration scratch scripts
+credentials.json
+*.json.bak
+get_all_credentials.mjs
+get_credentials.mjs
+check_*.js
+fetch_*.js
+*accounts*.txt

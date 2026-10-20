@@ -20,15 +20,37 @@ import connectDB from "./config/db.js";
 import { emailService } from "./notifications/services/EmailService.js";
 import { startRetryJob } from "./notifications/jobs/RetryJob.js";
 import { startScheduledJobs } from "./notifications/jobs/ScheduledJob.js";
+import mongoose from "mongoose";
+import { seedDepartments } from "./seeders/departmentSeeder.js";
 import logger from "./utils/logger.js";
 
 const PORT = process.env.PORT || 5000;
 
+export function validateEnvironment() {
+  if (process.env.NODE_ENV === "production") {
+    const required = ["JWT_SECRET", "MONGO_URI"];
+    const missing = required.filter((key) => !process.env[key]);
+    if (missing.length > 0) {
+      const errMessage = `Production startup failure: Missing required secret(s): ${missing.join(", ")}`;
+      logger.error({ message: errMessage });
+      process.exit(1);
+    }
+  }
+}
+
 async function startServer() {
   try {
+    // ─── 0. Validate Production Environment Secrets ───────────────────────────
+    validateEnvironment();
+
     // ─── 1. Database ──────────────────────────────────────────────────────────
     await connectDB();
     logger.info({ message: "✅ Database connected successfully" });
+
+    // Seed default departments idempotently if database is empty
+    await seedDepartments().catch((err) =>
+      logger.error({ message: "Error running department seeder", error: err.message })
+    );
 
     // ─── 2. Verify email provider connection ──────────────────────────────
     emailService
@@ -66,11 +88,18 @@ async function startServer() {
     });
 
     // ─── 5. Graceful shutdown ─────────────────────────────────────────────────
-    const gracefulShutdown = (signal) => {
+    const gracefulShutdown = async (signal) => {
       logger.info({ message: `${signal} received — shutting down gracefully` });
-      server.close(() => {
-        logger.info({ message: "Server closed. All connections drained." });
-        process.exit(0);
+      server.close(async () => {
+        logger.info({ message: "HTTP server closed. Draining database connections..." });
+        try {
+          await mongoose.connection.close(false);
+          logger.info({ message: "MongoDB connection closed. Process exiting cleanly." });
+          process.exit(0);
+        } catch (dbErr) {
+          logger.error({ message: "Error closing MongoDB connection", error: dbErr.message });
+          process.exit(1);
+        }
       });
 
       // Force-exit if graceful shutdown takes too long (10s timeout)
@@ -108,4 +137,6 @@ async function startServer() {
   }
 }
 
-startServer();
+if (process.env.NODE_ENV !== "test") {
+  startServer();
+}

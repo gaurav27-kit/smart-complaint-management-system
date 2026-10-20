@@ -66,7 +66,6 @@ const departmentSchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "Created by user reference is required"],
     },
   },
   {
@@ -75,9 +74,7 @@ const departmentSchema = new mongoose.Schema(
   }
 );
 
-// Indexes for query performance and uniqueness constraints
-departmentSchema.index({ name: 1 }, { unique: true });
-departmentSchema.index({ code: 1 }, { unique: true });
+// Performance index for active status queries
 departmentSchema.index({ isActive: 1 });
 
 const Department =

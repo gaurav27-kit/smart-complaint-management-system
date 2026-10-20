@@ -9,6 +9,7 @@ You must categorize the complaint strictly into one of the following categories:
 - Garbage
 - Street Light
 - Drainage
+- IT
 - Other
 
 You must assign a priority strictly from the following:
@@ -28,6 +29,7 @@ You must assign a department strictly from the following:
 - Electricity Board
 - Sanitation
 - Transport
+- IT Department
 - General Administration
 
 Provide a concise, one-line summary (max 10 words).

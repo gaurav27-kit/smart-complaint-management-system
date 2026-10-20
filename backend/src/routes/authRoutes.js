@@ -20,18 +20,22 @@ import express from "express";
 import {
   register,
   login,
+  googleLogin,
   verifyEmail,
   resendVerification,
   forgotPassword,
   resetPassword,
 } from "../controllers/authController.js";
 import { authLimiter, sensitiveAuthLimiter } from "../middleware/rateLimiter.js";
+import { validate } from "../middleware/validate.js";
+import { registerSchema, loginSchema, googleAuthSchema } from "../validators/schemas.js";
 
 const router = express.Router();
 
 // ─── Standard auth routes ─────────────────────────────────────────────────────
-router.post("/register", authLimiter, register);
-router.post("/login", authLimiter, login);
+router.post("/register", authLimiter, validate(registerSchema), register);
+router.post("/login", authLimiter, validate(loginSchema), login);
+router.post("/google", authLimiter, validate(googleAuthSchema), googleLogin);
 
 // ─── Email verification ──────────────────────────────────────────────────────
 router.get("/verify-email/:token", verifyEmail);

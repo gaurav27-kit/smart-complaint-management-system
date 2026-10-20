@@ -76,7 +76,29 @@ const notificationSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // Rendered HTML body — stored for audit and debugging purposes
+    title: {
+      type: String,
+      trim: true,
+    },
+
+    message: {
+      type: String,
+      trim: true,
+    },
+
+    complaintId: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+
+    isRead: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    // Rendered HTML body — stored for audit and email delivery purposes
     body: {
       type: String,
     },

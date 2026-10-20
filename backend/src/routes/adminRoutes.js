@@ -1,6 +1,8 @@
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
 import adminMiddleware from "../middleware/adminMiddleware.js";
+import { validate } from "../middleware/validate.js";
+import { updateComplaintStatusSchema } from "../validators/schemas.js";
 import {
   getDashboardStats,
   getAllComplaints,
@@ -41,6 +43,7 @@ router.patch(
   "/complaints/:id/status",
   authMiddleware,
   adminMiddleware,
+  validate(updateComplaintStatusSchema),
   updateComplaintStatus
 );
 

@@ -15,7 +15,7 @@
  * @param {string} options.title       - Human-readable title
  * @param {string} [options.description] - Optional description
  * @param {string} options.performedBy - User/Admin ObjectId
- * @param {string} options.performedByRole - "user" or "admin"
+ * @param {string} options.performedByRole - "admin", "department_member", or "user"
  * @param {object} [options.metadata]  - Flexible metadata (oldStatus, newStatus, imageCount, etc.)
  * @returns {object} Timeline event document ready to push into complaint.timeline
  */

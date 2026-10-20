@@ -11,6 +11,7 @@
  * operation still succeeds. The Notification record captures failures for retry.
  */
 
+import mongoose from "mongoose";
 import Complaint from "../models/Complaint.js";
 import Department from "../models/Department.js";
 import DepartmentMember from "../models/DepartmentMember.js";
@@ -28,6 +29,9 @@ import {
 import { notificationService } from "../notifications/services/NotificationService.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
+
+import { suggestDepartmentByCategory } from "../utils/departmentHelper.js";
+import { getMemberAccessFilter } from "../utils/departmentAccess.js";
 import logger from "../utils/logger.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -87,6 +91,21 @@ export const createComplaint = asyncHandler(async (req, res) => {
     }
   }
 
+  // Automatic Department Suggestion based on category lookup
+  const suggestedDeptId = await suggestDepartmentByCategory(category);
+
+  logger.info({
+    message: "[DEBUG] createComplaint Department Assignment Trace",
+    selectedCategory: category,
+    suggestedDeptId,
+    complaintPayloadBeforeSave: {
+      title,
+      category,
+      department: suggestedDeptId || null,
+      createdBy: req.user.id,
+    },
+  });
+
   // Create complaint document first to get the _id (used for Cloudinary folder naming)
   const complaint = await Complaint.create({
     title,
@@ -94,6 +113,7 @@ export const createComplaint = asyncHandler(async (req, res) => {
     category,
     location,
     priority,
+    department: suggestedDeptId || null,
     aiMetadata: parsedAiMetadata,
     createdBy: req.user.id,
   });
@@ -163,17 +183,44 @@ export const createComplaint = asyncHandler(async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * @desc    Get all complaints for the logged-in user
+ * @desc    Get all complaints for the logged-in user with pagination
  * @route   GET /api/complaints
  * @access  Private
  */
 export const getMyComplaints = asyncHandler(async (req, res) => {
-  const complaints = await Complaint.find({ createdBy: req.user.id }).sort({ createdAt: -1 });
+  const pageNum = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const rawLimit = parseInt(req.query.limit, 10) || 20;
+  const limitNum = Math.min(Math.max(1, rawLimit), 50);
+  const skip = (pageNum - 1) * limitNum;
+
+  const filter = { createdBy: req.user.id };
+
+  const [total, complaints] = await Promise.all([
+    Complaint.countDocuments(filter),
+    Complaint.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .select("title description category location priority status createdAt updatedAt images createdBy")
+      .lean(),
+  ]);
+
+  const totalPages = Math.ceil(total / limitNum) || 1;
 
   res.status(200).json({
     success: true,
     count: complaints.length,
     complaints,
+    page: pageNum,
+    limit: limitNum,
+    total,
+    totalPages,
+    pagination: {
+      page: pageNum,
+      limit: limitNum,
+      total,
+      totalPages,
+    },
   });
 });
 
@@ -181,21 +228,41 @@ export const getMyComplaints = asyncHandler(async (req, res) => {
 // GET COMPLAINT BY ID
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * @desc    Get a specific complaint by ID (owner only)
- * @route   GET /api/complaints/:id
- * @access  Private
- */
 export const getComplaintById = asyncHandler(async (req, res) => {
-  const query = { _id: req.params.id };
+  const { id } = req.params;
 
-  if (req.user?.role !== "admin") {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw ApiError.badRequest("Invalid Complaint ID format");
+  }
+
+  let query = { _id: id };
+
+  if (req.user?.role === "department_member") {
+    const accessFilter = await getMemberAccessFilter(req.user.id);
+    query = { _id: id, ...accessFilter };
+  } else if (req.user?.role !== "admin") {
     query.createdBy = req.user.id;
   }
 
-  const complaint = await Complaint.findOne(query);
+  const complaint = await Complaint.findOne(query)
+    .populate("department", "name code")
+    .populate("createdBy", "fullName email phoneNumber")
+    .populate({
+      path: "assignedMember",
+      populate: { path: "user", select: "fullName email phoneNumber employeeId" },
+    });
 
   if (!complaint) {
+    // For department members: distinguish between "does not exist" (404)
+    // and "exists but belongs to another department" (403).
+    // Complaint.exists() is used here because it is faster and lower-memory
+    // than findById().select("_id"), and clearly expresses the intent.
+    if (req.user?.role === "department_member") {
+      const exists = await Complaint.exists({ _id: id });
+      if (exists) {
+        throw ApiError.forbidden("Access denied: complaint belongs to another department");
+      }
+    }
     throw ApiError.notFound("Complaint not found");
   }
 
@@ -212,10 +279,22 @@ export const getComplaintById = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const getComplaintTimeline = asyncHandler(async (req, res) => {
-  const complaint = await Complaint.findOne({
-    _id: req.params.id,
-    createdBy: req.user.id,
-  }).select("timeline");
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw ApiError.badRequest("Invalid Complaint ID format");
+  }
+
+  let query = { _id: id };
+
+  if (req.user?.role === "department_member") {
+    const accessFilter = await getMemberAccessFilter(req.user.id);
+    query = { _id: id, ...accessFilter };
+  } else if (req.user?.role !== "admin") {
+    query.createdBy = req.user.id;
+  }
+
+  const complaint = await Complaint.findOne(query).select("timeline");
 
   if (!complaint) {
     throw ApiError.notFound("Complaint not found");
@@ -401,8 +480,9 @@ export const assignDepartment = asyncHandler(async (req, res) => {
     throw ApiError.badRequest("Complaint is already assigned to this department");
   }
 
-  // Update the complaint's department field and append timeline event
+  // Update the complaint's department field, reset member assignment for HEAD to assign, and append timeline event
   complaint.department = department._id;
+  complaint.assignedMember = null;
   complaint.timeline.push(
     departmentAssignedEvent(req.user.id, req.user.role || "admin", {
       departmentId: department._id,
@@ -420,7 +500,22 @@ export const assignDepartment = asyncHandler(async (req, res) => {
     })
     .catch((err) =>
       logger.error({
-        message: "Failed to dispatch department assignment notification",
+        message: "Failed to dispatch department assignment notification to user",
+        error: err.message,
+      }),
+    );
+
+  // Notify Department HEAD about new complaint assigned to department
+  DepartmentMember.findOne({ department: department._id, deptRole: "HEAD", isActive: true })
+    .populate("user")
+    .then((headMember) => {
+      if (headMember && headMember.user) {
+        fireNotification(notificationService.sendComplaintAssignedToMember(headMember.user, complaint));
+      }
+    })
+    .catch((err) =>
+      logger.error({
+        message: "Failed to dispatch HEAD notification for department assignment",
         error: err.message,
       }),
     );

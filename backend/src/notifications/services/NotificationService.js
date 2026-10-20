@@ -107,6 +107,13 @@ class NotificationService {
       channel: "email",
       status: "pending",
       subject,
+      title: subject,
+      message: metadata.message || metadata.description || subject,
+      complaintId:
+        metadata.complaintId ||
+        metadata.complaint?._id ||
+        (typeof metadata.complaint === "string" ? metadata.complaint : null),
+      isRead: false,
       body: renderedHtml,
       provider: emailService.providerName,
       metadata: {

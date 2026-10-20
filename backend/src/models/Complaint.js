@@ -18,13 +18,28 @@ const complaintSchema = new mongoose.Schema(
       type: String,
       required: true,
       enum: [
+        // Internal Category Values
+        "ROAD_DAMAGE",
+        "WATER_LEAKAGE",
+        "GARBAGE_COLLECTION",
+        "STREET_LIGHT",
+        "DRAINAGE",
+        "PUBLIC_SAFETY",
+        "HEALTH_SANITATION",
+        "IT_WEBSITE",
+        "OTHER",
+
+        // Legacy Category Values (Backward Compatibility)
         "Road",
         "Water",
         "Electricity",
         "Garbage",
         "Street Light",
         "Drainage",
+        "IT",
         "Other",
+        "Public Safety",
+        "Health",
       ],
     },
 
@@ -85,7 +100,7 @@ const complaintSchema = new mongoose.Schema(
         performedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
         performedByRole: {
           type: String,
-          enum: ["user", "admin"],
+          enum: ["admin", "department_member", "user"],
           default: "user",
         },
         metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
@@ -158,6 +173,19 @@ const complaintSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
+
+// ─── Performance Indexes ───────────────────────────────────────────────────────
+// Citizen dashboard & list queries: fetch user's complaints sorted newest first
+complaintSchema.index({ createdBy: 1, createdAt: -1 });
+
+// Department head & officer scoped queries: filter by department and status
+complaintSchema.index({ department: 1, status: 1 });
+
+// Admin & analytics queries: filter/aggregate by status and priority
+complaintSchema.index({ status: 1, priority: 1 });
+
+// Field officer queries: filter complaints assigned to member by status
+complaintSchema.index({ assignedMember: 1, status: 1 });
 
 const Complaint =
   mongoose.models.Complaint || mongoose.model("Complaint", complaintSchema);

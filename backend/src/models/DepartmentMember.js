@@ -28,7 +28,7 @@ const departmentMemberSchema = new mongoose.Schema(
     deptRole: {
       type: String,
       enum: ["HEAD", "ADMIN", "SUPERVISOR", "FIELD_OFFICER"],
-      default: "ADMIN",
+      default: "FIELD_OFFICER",
     },
 
     isPrimary: {

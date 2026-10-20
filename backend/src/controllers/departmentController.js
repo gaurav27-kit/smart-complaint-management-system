@@ -9,10 +9,12 @@
  * - Provide proper logging for auditing mutations
  */
 
+import mongoose from "mongoose";
 import Department from "../models/Department.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
 import logger from "../utils/logger.js";
+import { sanitizeSearchRegex } from "../utils/stringUtils.js";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CREATE DEPARTMENT
@@ -81,7 +83,7 @@ export const createDepartment = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const getAllDepartments = asyncHandler(async (req, res) => {
-  const { search, isActive, page = 1, limit = 10 } = req.query;
+  const { search, isActive, page = 1, limit = 100 } = req.query;
 
   const filter = {};
 
@@ -90,12 +92,15 @@ export const getAllDepartments = asyncHandler(async (req, res) => {
   }
 
   if (search) {
-    const searchRegex = new RegExp(search.trim(), "i");
-    filter.$or = [
-      { name: searchRegex },
-      { code: searchRegex },
-      { head: searchRegex },
-    ];
+    const safeSearch = sanitizeSearchRegex(search);
+    if (safeSearch) {
+      const searchRegex = new RegExp(safeSearch, "i");
+      filter.$or = [
+        { name: searchRegex },
+        { code: searchRegex },
+        { head: searchRegex },
+      ];
+    }
   }
 
   const pageNum = Math.max(parseInt(page, 10) || 1, 1);
@@ -133,6 +138,10 @@ export const getAllDepartments = asyncHandler(async (req, res) => {
 export const getDepartmentById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw ApiError.badRequest("Invalid Department ID format");
+  }
+
   const department = await Department.findById(id).populate(
     "createdBy",
     "fullName email role"
@@ -160,6 +169,10 @@ export const getDepartmentById = asyncHandler(async (req, res) => {
 export const updateDepartment = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, code, description, head, email, phone, isActive } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw ApiError.badRequest("Invalid Department ID format");
+  }
 
   const department = await Department.findById(id);
 
@@ -236,6 +249,10 @@ export const updateDepartment = asyncHandler(async (req, res) => {
  */
 export const deleteDepartment = asyncHandler(async (req, res) => {
   const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw ApiError.badRequest("Invalid Department ID format");
+  }
 
   const department = await Department.findById(id);
 

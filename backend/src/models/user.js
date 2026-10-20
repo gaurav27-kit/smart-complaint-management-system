@@ -1,12 +1,13 @@
 /**
  * @file User.js
- * @description Extended user schema with email verification and password reset support.
+ * @description Extended user schema with email verification, password reset, and Google OAuth support.
  *
  * Changes from original:
  * - Added `emailVerified` flag — users cannot access protected features until verified
  * - Added `emailVerificationToken` / `emailVerificationExpires` — SHA-256 hashed token + TTL
  * - Added `passwordResetToken` / `passwordResetExpires` — SHA-256 hashed token + 1-hour TTL
  * - Added `lastLoginAt` — audit trail for security monitoring
+ * - Added `googleId` / `authProvider` / `avatar` — Google OAuth support
  *
  * Security note: token fields are excluded from query results by default using `select: false`.
  * They are only fetched when explicitly selected (e.g., User.findOne().select('+emailVerificationToken')).
@@ -35,14 +36,55 @@ const userSchema = new mongoose.Schema(
 
     password: {
       type: String,
-      required: [true, "Password is required"],
+      required: [
+        function () {
+          return this.authProvider === "local";
+        },
+        "Password is required",
+      ],
       minlength: [6, "Password must be at least 6 characters"],
+    },
+
+    // ─── Google OAuth ──────────────────────────────────────────────────────
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+
+    authProvider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
+
+    avatar: {
+      type: String,
+      trim: true,
     },
 
     role: {
       type: String,
-      enum: ["user", "admin"],
+      enum: ["admin", "department_member", "user"],
       default: "user",
+    },
+
+    phoneNumber: {
+      type: String,
+      trim: true,
+    },
+
+    employeeId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true,
     },
 
     // ─── Email Verification ────────────────────────────────────────────────
@@ -79,6 +121,12 @@ const userSchema = new mongoose.Schema(
     lastLoginAt: {
       type: Date,
     },
+
+    // Timestamp of last password change to invalidate older JWTs
+    passwordChangedAt: {
+      type: Date,
+      select: false,
+    },
   },
   {
     timestamps: true,
@@ -97,6 +145,10 @@ userSchema.index(
 userSchema.index(
   { passwordResetToken: 1 },
   { sparse: true, name: "password_reset_token_idx" },
+);
+userSchema.index(
+  { employeeId: 1 },
+  { sparse: true, name: "employee_id_idx" },
 );
 
 const User = mongoose.models.User || mongoose.model("User", userSchema);

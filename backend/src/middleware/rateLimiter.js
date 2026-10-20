@@ -74,3 +74,28 @@ export const adminLimiter = createLimiter({
   max: 300,
   message: "Too many admin requests. Please try again in 15 minutes.",
 });
+
+/**
+ * AI route limiter: /api/ai/analyze-complaint
+ * 5 requests per minute per user or IP
+ */
+export const aiLimiter = createLimiter({
+  windowMs: 60 * 1000,
+  max: 5,
+  keyGenerator: (req) => req.user?._id?.toString() || req.user?.id?.toString() || req.ip,
+  validate: false,
+  message: "Too many AI analysis requests. Please try again in 1 minute.",
+});
+
+/**
+ * Upload limiter: complaint submission and resolution proof uploads
+ * 10 upload submissions per hour per user (with IP fallback)
+ */
+export const uploadLimiter = createLimiter({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,
+  keyGenerator: (req) => req.user?._id?.toString() || req.user?.id?.toString() || req.ip,
+  validate: false,
+  message: "Too many file upload submissions. Please try again in 1 hour.",
+});
+

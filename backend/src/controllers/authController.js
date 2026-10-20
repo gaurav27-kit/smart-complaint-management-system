@@ -1,6 +1,6 @@
 /**
  * @file authController.js
- * @description Authentication controller with complete email verification and password reset.
+ * @description Authentication controller with complete email verification, password reset, and Google OAuth.
  *
  * Improvements over original:
  * - asyncHandler replaces manual try/catch in every function
@@ -10,10 +10,12 @@
  * - Tokens are SHA-256 hashed before storage (raw token only lives in email URL)
  * - lastLoginAt timestamp updated on every successful login
  * - Emails are fired asynchronously — responses are never delayed by email delivery
+ * - Google OAuth: verify Google ID token, find-or-create user, return same JWT shape
  */
 
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
@@ -46,6 +48,8 @@ const buildUserResponse = (user) => ({
   email: user.email,
   role: user.role,
   emailVerified: user.emailVerified,
+  avatar: user.avatar,
+  authProvider: user.authProvider,
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -236,8 +240,19 @@ export const login = asyncHandler(async (req, res) => {
 
   if (!user) throw invalidCredentials;
 
+  // Google-only accounts have no password — guide the user instead of crashing
+  if (!user.password) {
+    throw ApiError.badRequest(
+      "This account uses Google sign-in. Please continue with Google.",
+    );
+  }
+
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) throw invalidCredentials;
+
+  if (!user.emailVerified) {
+    throw ApiError.forbidden("Please verify your email address before logging in");
+  }
 
   // Update last login timestamp (don't await — non-critical)
   User.findByIdAndUpdate(user._id, { lastLoginAt: new Date() }).catch(() => {});
@@ -335,6 +350,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
   user.password = await bcrypt.hash(password, 12);
   user.passwordResetToken = undefined;
   user.passwordResetExpires = undefined;
+  user.passwordChangedAt = new Date();
   await user.save();
 
   logger.info({ message: "[Auth] Password reset successfully", userId: user._id });
@@ -347,5 +363,125 @@ export const resetPassword = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     message: "Password reset successfully. You can now log in with your new password.",
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GOOGLE OAUTH LOGIN
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * @desc    Authenticate or register user via Google ID Token
+ * @route   POST /api/auth/google
+ * @access  Public
+ */
+export const googleLogin = asyncHandler(async (req, res) => {
+  const { idToken, credential } = req.body;
+  const token = idToken || credential;
+
+  if (!token) {
+    throw ApiError.badRequest("Google ID token or credential is required");
+  }
+
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const client = new OAuth2Client(clientId);
+
+  let payload;
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: clientId,
+    });
+    payload = ticket.getPayload();
+  } catch (error) {
+    logger.error({
+      message: "[Auth] Google ID token verification failed",
+      error: error.message,
+    });
+    throw ApiError.unauthorized("Invalid or expired Google token");
+  }
+
+  if (!payload) {
+    throw ApiError.unauthorized("Failed to retrieve Google user profile");
+  }
+
+  const { sub: googleId, email, name, picture, email_verified } = payload;
+
+  if (!email) {
+    throw ApiError.badRequest("Google account does not have an associated email address");
+  }
+
+  if (!email_verified) {
+    throw ApiError.badRequest("Google account email is not verified");
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // 1. Look for user by googleId
+  let user = await User.findOne({ googleId });
+
+  // 2. If not found by googleId, check if account exists with this email
+  if (!user) {
+    user = await User.findOne({ email: normalizedEmail });
+
+    if (user) {
+      // Link Google account to existing user
+      user.googleId = googleId;
+      if (user.authProvider === "local") {
+        // Keep authProvider or indicate linked
+      }
+      if (!user.emailVerified) {
+        user.emailVerified = true;
+      }
+      if (!user.avatar && picture) {
+        user.avatar = picture;
+      }
+      await user.save();
+      logger.info({
+        message: "[Auth] Linked existing user account to Google ID",
+        userId: user._id,
+        email: normalizedEmail,
+      });
+    } else {
+      // Create new user via Google
+      user = await User.create({
+        fullName: name || normalizedEmail.split("@")[0] || "User",
+        email: normalizedEmail,
+        googleId,
+        authProvider: "google",
+        avatar: picture || "",
+        emailVerified: true,
+        role: "user",
+      });
+      logger.info({
+        message: "[Auth] Registered new user via Google",
+        userId: user._id,
+        email: normalizedEmail,
+      });
+    }
+  } else {
+    // Existing Google-linked user - update avatar if missing
+    if (!user.avatar && picture) {
+      user.avatar = picture;
+      await user.save();
+    }
+  }
+
+  if (!user.isActive) {
+    throw ApiError.forbidden("Your account has been deactivated. Please contact support.");
+  }
+
+  // Update last login
+  User.findByIdAndUpdate(user._id, { lastLoginAt: new Date() }).catch(() => {});
+
+  const jwtToken = signToken({ id: user._id, role: user.role });
+
+  logger.info({ message: "[Auth] Google login successful", userId: user._id });
+
+  res.status(200).json({
+    success: true,
+    message: "Login successful",
+    token: jwtToken,
+    user: buildUserResponse(user),
   });
 });

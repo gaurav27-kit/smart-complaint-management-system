@@ -1,44 +1,63 @@
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
-import adminMiddleware from "../middleware/adminMiddleware.js";
+import { adminOrHeadMiddleware } from "../middleware/adminOrHeadMiddleware.js";
 import {
   addDepartmentMember,
   getDepartmentMembers,
   removeDepartmentMember,
+  reactivateDepartmentMember,
 } from "../controllers/departmentMemberController.js";
 
 const router = express.Router({ mergeParams: true });
 
 // ─── Department Member Routes ─────────────────────────────────────────────────
 
-// Add a user to a department (Admin only)
+// Create/Add a department member (Admin or Department Head)
+router.post(
+  "/members",
+  authMiddleware,
+  adminOrHeadMiddleware,
+  addDepartmentMember
+);
 router.post(
   "/:departmentId/members",
   authMiddleware,
-  adminMiddleware,
+  adminOrHeadMiddleware,
   addDepartmentMember
 );
 
-// Get all members of a department (Authenticated users)
+// Get all active department members (Authenticated users)
+router.get(
+  "/members",
+  authMiddleware,
+  getDepartmentMembers
+);
 router.get(
   "/:departmentId/members",
   authMiddleware,
   getDepartmentMembers
 );
 
-// Remove a member from a department by membership ID or User ID (Admin only)
+// Reactivate a soft-deleted department member (Admin or Department Head)
+router.patch(
+  "/members/:memberId/reactivate",
+  authMiddleware,
+  adminOrHeadMiddleware,
+  reactivateDepartmentMember
+);
+
+// Remove (Soft Delete) a member from a department (Admin or Department Head)
+router.delete(
+  "/members/:memberId",
+  authMiddleware,
+  adminOrHeadMiddleware,
+  removeDepartmentMember
+);
 router.delete(
   "/:departmentId/members/:memberId",
   authMiddleware,
-  adminMiddleware,
-  (req, res, next) => {
-    // Map memberId param to id and userId for seamless controller resolution
-    if (req.params.memberId) {
-      if (!req.params.id) req.params.id = req.params.memberId;
-      if (!req.params.userId) req.params.userId = req.params.memberId;
-    }
-    return removeDepartmentMember(req, res, next);
-  }
+  adminOrHeadMiddleware,
+  removeDepartmentMember
 );
 
 export default router;
