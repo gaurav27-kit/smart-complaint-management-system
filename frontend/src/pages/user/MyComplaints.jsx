@@ -14,6 +14,9 @@ const MyComplaints = () => {
   const [filteredComplaints, setFilteredComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   
   // Delete Modal State
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -21,26 +24,34 @@ const MyComplaints = () => {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    fetchComplaintsList();
-  }, []);
+    fetchComplaintsList(currentPage);
+  }, [currentPage]);
 
   useEffect(() => {
     if (searchQuery.trim() === "") {
       setFilteredComplaints(complaints);
     } else {
-      const filtered = complaints.filter((c) =>
-        c.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      const filtered = complaints.filter((c) => {
+        const q = searchQuery.toLowerCase();
+        return (
+          (c.title && c.title.toLowerCase().includes(q)) ||
+          (c.location && c.location.toLowerCase().includes(q)) ||
+          (c.category && c.category.toLowerCase().includes(q)) ||
+          (c._id && c._id.toLowerCase().includes(q))
+        );
+      });
       setFilteredComplaints(filtered);
     }
   }, [searchQuery, complaints]);
 
-  const fetchComplaintsList = async () => {
+  const fetchComplaintsList = async (page = 1) => {
     try {
       setLoading(true);
-      const data = await getComplaints();
+      const data = await getComplaints(page, 20);
       setComplaints(data.complaints || []);
       setFilteredComplaints(data.complaints || []);
+      setTotalPages(data.totalPages || 1);
+      setTotalCount(data.total ?? (data.complaints?.length || 0));
     } catch (error) {
       console.error("Failed to load complaints:", error);
       toast.error(
@@ -69,7 +80,7 @@ const MyComplaints = () => {
       setDeleteModalOpen(false);
       setComplaintToDelete(null);
       // Refresh list
-      fetchComplaintsList();
+      fetchComplaintsList(currentPage);
     } catch (error) {
       console.error("Failed to delete complaint:", error);
       toast.error(
@@ -133,11 +144,37 @@ const MyComplaints = () => {
               No complaints match your search query: <span className="font-semibold text-gray-800">"{searchQuery}"</span>
             </div>
           ) : (
-            <ComplaintTable
-              complaints={filteredComplaints}
-              onEdit={handleEdit}
-              onDelete={handleDeleteClick}
-            />
+            <>
+              <ComplaintTable
+                complaints={filteredComplaints}
+                onEdit={handleEdit}
+                onDelete={handleDeleteClick}
+              />
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-gray-200 sm:px-6 mt-4 shadow-sm">
+                  <div className="text-sm text-gray-700">
+                    Showing page <span className="font-semibold">{currentPage}</span> of{" "}
+                    <span className="font-semibold">{totalPages}</span> ({totalCount} total)
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={currentPage <= 1}
+                      className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage >= totalPages}
+                      className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

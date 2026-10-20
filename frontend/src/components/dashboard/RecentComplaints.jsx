@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { FiArrowRight, FiInbox } from "react-icons/fi";
 import StatusBadge from "../badges/StatusBadge";
+import { getCategoryLabel } from "../../config/complaintCategories";
 
 const RecentComplaints = ({
   complaints = [],
@@ -73,7 +74,7 @@ const RecentComplaints = ({
                 </h3>
 
                 <div className="flex flex-wrap items-center gap-2 mt-2 text-sm text-gray-500">
-                  <span>{complaint.category}</span>
+                  <span>{getCategoryLabel(complaint.category)}</span>
 
                   <span>•</span>
 

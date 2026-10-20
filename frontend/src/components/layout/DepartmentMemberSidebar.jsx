@@ -2,76 +2,106 @@ import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import Logo from "@/components/common/Logo";
 import { BRAND } from "@/constants/brand";
-import { FiChevronLeft, FiChevronRight, FiGrid, FiInbox, FiPieChart, FiKey, FiBell } from "react-icons/fi";
+import { FiChevronLeft, FiChevronRight, FiGrid, FiInbox, FiPieChart, FiSettings, FiBell } from "react-icons/fi";
 
 const DepartmentMemberSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const linkClass = ({ isActive }) =>
-    `flex items-center rounded-lg transition-all duration-200 ${
+    `group relative flex items-center rounded-xl gap-4 transition-all duration-300 ${
       isCollapsed ? "justify-center p-3" : "px-4 py-3"
     } ${
       isActive
-        ? "bg-blue-600 text-white"
-        : "text-gray-300 hover:bg-slate-700 hover:text-white"
+        ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+        : "text-slate-400 hover:bg-slate-800 hover:text-white"
     }`;
 
   return (
     <aside
-      className={`min-h-screen bg-slate-900 text-white flex flex-col shadow-lg transition-all duration-300 ${
+      className={`min-h-screen bg-slate-900 text-white flex flex-col shadow-lg transition-all duration-300 shrink-0 ${
         isCollapsed ? "w-16" : "w-64"
       }`}
     >
-      {/* Brand Header */}
-      <div className="p-4 border-b border-slate-700 flex flex-col items-center justify-center min-h-[100px]">
-        <Logo iconOnly size="h-10" alt={`${BRAND.shortName} Sidebar Icon`} />
+      {/* Brand Header: Reduced height & simplified */}
+      <div className="p-3 border-b border-slate-800 flex flex-col items-center justify-center h-[72px] shrink-0">
+        <Logo iconOnly size="h-8" alt="SCMS Sidebar Icon" />
         {!isCollapsed && (
-          <div className="text-center mt-3 animate-fadeIn">
-            <h1 className="text-sm font-bold tracking-wider uppercase text-white">
-              {BRAND.shortName}
-            </h1>
-            <p className="text-[10px] text-gray-400 mt-1 max-w-[200px] leading-tight">
-              Member Workspace
-            </p>
-          </div>
+          <span className="text-[11px] font-bold tracking-widest uppercase text-white mt-1 animate-fadeIn">
+            SCMS
+          </span>
         )}
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
         <NavLink to="/member" end className={linkClass}>
-          <span className="flex items-center gap-3">
-            <FiGrid className="text-lg shrink-0" />
-            {!isCollapsed && <span className="text-sm truncate">Dashboard</span>}
-          </span>
+          {({ isActive }) => (
+            <>
+              {isActive && (
+                <span className="absolute left-0 top-2 bottom-2 w-1 bg-white rounded-r" />
+              )}
+              <span className="flex items-center gap-4 w-full">
+                <FiGrid className="text-[20px] shrink-0" />
+                {!isCollapsed && <span className="text-sm font-medium truncate">Dashboard</span>}
+              </span>
+            </>
+          )}
         </NavLink>
 
         <NavLink to="/member/assigned-complaints" className={linkClass}>
-          <span className="flex items-center gap-3">
-            <FiInbox className="text-lg shrink-0" />
-            {!isCollapsed && <span className="text-sm truncate">Assigned Complaints</span>}
-          </span>
+          {({ isActive }) => (
+            <>
+              {isActive && (
+                <span className="absolute left-0 top-2 bottom-2 w-1 bg-white rounded-r" />
+              )}
+              <span className="flex items-center gap-4 w-full">
+                <FiInbox className="text-[20px] shrink-0" />
+                {!isCollapsed && <span className="text-sm font-medium truncate">Assigned Complaints</span>}
+              </span>
+            </>
+          )}
         </NavLink>
 
         <NavLink to="/member/notifications" className={linkClass}>
-          <span className="flex items-center gap-3">
-            <FiBell className="text-lg shrink-0" />
-            {!isCollapsed && <span className="text-sm truncate">Notifications</span>}
-          </span>
+          {({ isActive }) => (
+            <>
+              {isActive && (
+                <span className="absolute left-0 top-2 bottom-2 w-1 bg-white rounded-r" />
+              )}
+              <span className="flex items-center gap-4 w-full">
+                <FiBell className="text-[20px] shrink-0" />
+                {!isCollapsed && <span className="text-sm font-medium truncate">Notifications</span>}
+              </span>
+            </>
+          )}
         </NavLink>
 
         <NavLink to="/member/workload" className={linkClass}>
-          <span className="flex items-center gap-3">
-            <FiPieChart className="text-lg shrink-0" />
-            {!isCollapsed && <span className="text-sm truncate">My Workload</span>}
-          </span>
+          {({ isActive }) => (
+            <>
+              {isActive && (
+                <span className="absolute left-0 top-2 bottom-2 w-1 bg-white rounded-r" />
+              )}
+              <span className="flex items-center gap-4 w-full">
+                <FiPieChart className="text-[20px] shrink-0" />
+                {!isCollapsed && <span className="text-sm font-medium truncate">My Workload</span>}
+              </span>
+            </>
+          )}
         </NavLink>
 
-        <NavLink to="/member/change-password" className={linkClass}>
-          <span className="flex items-center gap-3">
-            <FiKey className="text-lg shrink-0" />
-            {!isCollapsed && <span className="text-sm truncate">Change Password</span>}
-          </span>
+        <NavLink to="/member/settings" className={linkClass}>
+          {({ isActive }) => (
+            <>
+              {isActive && (
+                <span className="absolute left-0 top-2 bottom-2 w-1 bg-white rounded-r" />
+              )}
+              <span className="flex items-center gap-4 w-full">
+                <FiSettings className="text-[20px] shrink-0" />
+                {!isCollapsed && <span className="text-sm font-medium truncate">Settings</span>}
+              </span>
+            </>
+          )}
         </NavLink>
       </nav>
 
@@ -95,3 +125,4 @@ const DepartmentMemberSidebar = () => {
 };
 
 export default DepartmentMemberSidebar;
+

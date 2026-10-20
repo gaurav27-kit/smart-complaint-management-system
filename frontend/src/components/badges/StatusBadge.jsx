@@ -8,6 +8,9 @@ const StatusBadge = ({ status }) => {
     case "resolved":
       badgeStyles = "bg-green-100 text-green-800 border-green-200";
       break;
+    case "closed":
+      badgeStyles = "bg-slate-100 text-slate-700 border-slate-200";
+      break;
     case "in progress":
       badgeStyles = "bg-blue-100 text-blue-800 border-blue-200";
       break;

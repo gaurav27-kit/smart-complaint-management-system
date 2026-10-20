@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -31,105 +31,57 @@ import Loading from "@/components/ui/Loading";
 import EmptyState from "@/components/ui/EmptyState";
 import ResolutionProofUpload from "../../components/modals/ResolutionProofUpload";
 import ResolutionNotesModal from "../../components/modals/ResolutionNotesModal";
+import StatusUpdateModal from "../../components/modals/StatusUpdateModal";
+import {
+  getComplaintById,
+  updateComplaintStatus,
+  addComplaintNote,
+  uploadResolutionProof,
+} from "../../services/complaintService";
+import { getCategoryLabel } from "../../config/complaintCategories";
 
 const ComplaintDetails = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [complaintData, setComplaintData] = useState(null);
 
   // Status Modal State
   const [updateStatusOpen, setUpdateStatusOpen] = useState(false);
   const [statusValue, setStatusValue] = useState("In Progress");
+  const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
 
-  // Resolution Proof Modal State & Mock Uploaded Proofs
+  // Resolution Proof Modal State & Uploaded Proofs
   const [isProofModalOpen, setIsProofModalOpen] = useState(false);
   const [uploadedProofs, setUploadedProofs] = useState([]);
 
   // Internal Notes Modal State & Notes List State
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
-  const [notesList, setNotesList] = useState([
-    {
-      id: "n-1",
-      author: "Rajesh Kumar (Field Officer)",
-      date: "2026-07-26 10:00 AM",
-      text: "Inspected location. Control box transformer driver unit needs component replacement. Replacement unit requested from inventory.",
-    },
-  ]);
+  const [notesList, setNotesList] = useState([]);
 
-  // Mock data for assigned complaint details
-  const complaint = {
-    id: id || "CMP-1089",
-    title: "Street Light Fault in Block B",
-    category: "Infrastructure & Electrical",
-    priority: "High",
-    status: statusValue,
-    assignedDate: "2026-07-26",
-    createdAt: "2026-07-25T11:30:00Z",
-    updatedAt: "2026-07-26T09:15:00Z",
-    location: "Main Avenue, Block B, Sector 4, City Zone 2",
-    description:
-      "Street lights on pole #4 and #5 are completely flickering and non-functional at night, causing safety concerns for pedestrians and commuters after 8 PM.",
-    assignedDepartment: "Electrical & Power Infrastructure Department",
-    assignedMember: "Rajesh Kumar (Staff ID: MEM-204)",
-    citizen: {
-      name: "Amit Sharma",
-      email: "amit.sharma@example.com",
-      phone: "+91 98765 43210",
-    },
-    images: [
-      {
-        url: "https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=600&q=80",
-        publicId: "img-1",
-      },
-      {
-        url: "https://images.unsplash.com/photo-1544725121-be3bf52e2dc8?auto=format&fit=crop&w=600&q=80",
-        publicId: "img-2",
-      },
-    ],
-    timelineEvents: [
-      {
-        _id: "t-1",
-        type: "COMPLAINT_CREATED",
-        title: "Complaint Created",
-        description: "Submitted by citizen Amit Sharma via Mobile Portal.",
-        performedByRole: "user",
-        createdAt: "2026-07-25T11:30:00Z",
-      },
-      {
-        _id: "t-2",
-        type: "DEPARTMENT_ASSIGNED",
-        title: "Department Assigned",
-        description: "System auto-assigned to Electrical & Power Infrastructure Department.",
-        performedByRole: "admin",
-        createdAt: "2026-07-25T12:00:00Z",
-      },
-      {
-        _id: "t-3",
-        type: "MEMBER_ASSIGNED",
-        title: "Member Assigned",
-        description: "Assigned to field officer Rajesh Kumar.",
-        performedByRole: "admin",
-        createdAt: "2026-07-26T08:00:00Z",
-      },
-      {
-        _id: "t-4",
-        type: "STATUS_UPDATED",
-        title: "Status Updated to In Progress",
-        description: "Field team deployed for physical inspection of power lines.",
-        performedByRole: "admin",
-        createdAt: "2026-07-26T09:15:00Z",
-      },
-    ],
-    notes: [
-      {
-        id: "n-1",
-        author: "Rajesh Kumar (Field Officer)",
-        date: "2026-07-26 10:00 AM",
-        text: "Inspected location. Control box transformer driver unit needs component replacement. Replacement unit requested from inventory.",
-      },
-    ],
-    proofUploaded: false,
+  // Fetch live complaint details from backend endpoint: GET /api/complaints/:id
+  const fetchComplaintDetails = async () => {
+    if (!id) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getComplaintById(id);
+      const data = response.complaint || response.data || response;
+      setComplaintData(data);
+      setStatusValue(data.status || "Pending");
+      setNotesList(data.notes || []);
+      setUploadedProofs(data.resolutionProof || []);
+    } catch (err) {
+      setError(err.message || "Failed to load complaint details.");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchComplaintDetails();
+  }, [id]);
 
   // Helper for priority badge styling matching SCMS standard
   const getPriorityBadgeClass = (priority) => {
@@ -146,44 +98,73 @@ const ComplaintDetails = () => {
     }
   };
 
-  const handleUpdateStatus = () => {
-    toast.success(`Status updated to "${statusValue}" (Mock UI update)`);
-    setUpdateStatusOpen(false);
+  const handleStatusUpdateSubmit = async ({ complaintId, newStatus, comment }) => {
+    setStatusUpdateLoading(true);
+    try {
+      const targetId = complaintId || id;
+      await updateComplaintStatus(targetId, { status: newStatus, comment });
+
+      toast.success(`Complaint status successfully updated to "${newStatus}"!`);
+      setUpdateStatusOpen(false);
+      setStatusValue(newStatus);
+
+      // Refresh live complaint details and timeline
+      await fetchComplaintDetails();
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || err.message || "Failed to update complaint status."
+      );
+      // Keep modal open so user input is preserved
+    } finally {
+      setStatusUpdateLoading(false);
+    }
   };
 
   const handleAddNoteClick = () => {
     setIsNoteModalOpen(true);
   };
 
-  const handleSaveNote = (newNoteText) => {
-    const newNote = {
-      id: `n-${Date.now()}`,
-      author: "Rajesh Kumar (Field Officer)",
-      date: new Date().toLocaleString("en-US", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }),
-      text: newNoteText,
-    };
-    setNotesList((prev) => [newNote, ...prev]);
-    toast.success("Internal resolution note added successfully!");
-    setIsNoteModalOpen(false);
+  const handleSaveNote = async (newNoteText) => {
+    try {
+      await addComplaintNote(id, newNoteText);
+      toast.success("Internal resolution note added successfully!");
+      setIsNoteModalOpen(false);
+
+      // Refresh live complaint details, notes list, and timeline
+      await fetchComplaintDetails();
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || err.message || "Failed to add internal resolution note."
+      );
+      throw err; // Re-throw so modal catches error, keeps modal open, and preserves text input
+    }
   };
 
   const handleUploadProofClick = () => {
     setIsProofModalOpen(true);
   };
 
-  const handleProofUpload = (newFiles) => {
-    setUploadedProofs(newFiles);
-    toast.success("Resolution proof uploaded successfully!");
-    setIsProofModalOpen(false);
+  const handleProofUpload = async (newFiles) => {
+    try {
+      await uploadResolutionProof(id, newFiles);
+      toast.success("Resolution proof uploaded successfully!");
+      setIsProofModalOpen(false);
+
+      // Refresh live complaint details, resolution proof list, and timeline
+      await fetchComplaintDetails();
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || err.message || "Failed to upload resolution proof."
+      );
+      throw err; // Re-throw so modal catches error, keeps modal open, and preserves selected files
+    }
   };
 
   const handleProofRemove = (fileItem) => {
     setUploadedProofs((prev) => prev.filter((f) => f !== fileItem));
   };
 
+  // 1. Loading State (reusing Loading component)
   if (loading) {
     return (
       <div className="py-12">
@@ -191,6 +172,76 @@ const ComplaintDetails = () => {
       </div>
     );
   }
+
+  // 2. Error State with Retry Button
+  if (error) {
+    return (
+      <div className="p-6 bg-red-50 border border-red-200 rounded-2xl space-y-4 max-w-xl mx-auto my-12 text-center">
+        <AlertCircle className="w-10 h-10 text-red-600 mx-auto" />
+        <h3 className="text-lg font-bold text-red-900">Failed to Load Complaint</h3>
+        <p className="text-sm text-red-700">{error}</p>
+        <div className="flex justify-center gap-3 pt-2">
+          <button
+            onClick={() => navigate("/member/assigned-complaints")}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl text-xs font-semibold hover:bg-gray-100"
+          >
+            Back to List
+          </button>
+          <button
+            onClick={fetchComplaintDetails}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Retry Loading</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Empty State if complaint not found
+  if (!complaintData) {
+    return (
+      <div className="py-12">
+        <EmptyState
+          title="Complaint Not Found"
+          message="The requested complaint record does not exist or has been removed."
+        />
+      </div>
+    );
+  }
+
+  // Live Complaint Mapping Object
+  const complaint = {
+    id: complaintData.id || complaintData._id || id,
+    title: complaintData.title || "Untitled Complaint",
+    category: getCategoryLabel(complaintData.category),
+    priority: complaintData.priority || "Medium",
+    status: statusValue || complaintData.status || "Pending",
+    assignedDate: complaintData.createdAt
+      ? new Date(complaintData.createdAt).toLocaleDateString()
+      : "Today",
+    createdAt: complaintData.createdAt || new Date().toISOString(),
+    updatedAt: complaintData.updatedAt || new Date().toISOString(),
+    location: complaintData.location || "N/A",
+    description: complaintData.description || "No description provided.",
+    assignedDepartment:
+      complaintData.department?.name ||
+      complaintData.departmentName ||
+      (typeof complaintData.department === "string" ? complaintData.department : "Unassigned"),
+    assignedMember:
+      complaintData.assignedMember?.user?.fullName ||
+      complaintData.assignedMember?.fullName ||
+      complaintData.assignedMemberName ||
+      (typeof complaintData.assignedMember === "string" ? complaintData.assignedMember : "Unassigned"),
+    citizen: {
+      name: complaintData.createdBy?.fullName || complaintData.citizen?.name || "N/A",
+      email: complaintData.createdBy?.email || complaintData.citizen?.email || "N/A",
+      phone: complaintData.createdBy?.phone || complaintData.citizen?.phone || "N/A",
+    },
+    images: complaintData.images || [],
+    timelineEvents: complaintData.timeline || [],
+  };
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -221,19 +272,18 @@ const ComplaintDetails = () => {
           </p>
         </div>
 
-        {/* Header Action Buttons (No Delete, Assign Dept, or Assign Member) */}
-        <div className="flex items-center gap-3 shrink-0">
+        {/* Header Action Buttons */}
+        <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/member/assigned-complaints")}
-            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl text-xs font-semibold transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back to Assigned</span>
+            <span>Back to Assigned Complaints</span>
           </button>
-
           <button
             onClick={() => setUpdateStatusOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold transition-colors shadow-sm"
           >
             <RefreshCw className="w-4 h-4" />
             <span>Update Status</span>
@@ -335,11 +385,11 @@ const ComplaintDetails = () => {
             </div>
 
             <div className="space-y-3">
-              {notesList.map((note) => (
-                <div key={note.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+              {notesList.map((note, idx) => (
+                <div key={note.id || idx} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <span className="font-bold text-gray-800">{note.author}</span>
-                    <span>{note.date}</span>
+                    <span>{note.date || (note.createdAt ? new Date(note.createdAt).toLocaleString() : "Recently")}</span>
                   </div>
                   <p className="text-xs text-gray-700 leading-relaxed">{note.text}</p>
                 </div>
@@ -494,55 +544,14 @@ const ComplaintDetails = () => {
         </div>
       </div>
 
-      {/* UPDATE STATUS MODAL */}
-      {updateStatusOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-slate-50">
-              <h3 className="text-base font-bold text-gray-900">Update Complaint Status</h3>
-              <button
-                onClick={() => setUpdateStatusOpen(false)}
-                className="p-1 text-gray-400 hover:text-gray-600 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="text-xs font-semibold text-gray-600 uppercase">
-                  Select New Status
-                </label>
-                <select
-                  value={statusValue}
-                  onChange={(e) => setStatusValue(e.target.value)}
-                  className="w-full mt-1.5 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Resolved">Resolved</option>
-                  <option value="Closed">Closed</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
-              <button
-                onClick={() => setUpdateStatusOpen(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-100"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUpdateStatus}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm"
-              >
-                Save Status
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* REUSED STATUS UPDATE MODAL */}
+      <StatusUpdateModal
+        isOpen={updateStatusOpen}
+        onClose={() => setUpdateStatusOpen(false)}
+        onStatusUpdate={handleStatusUpdateSubmit}
+        complaint={{ ...complaint, id: complaint.id }}
+        loading={statusUpdateLoading}
+      />
 
       {/* RESOLUTION PROOF UPLOAD MODAL */}
       <ResolutionProofUpload

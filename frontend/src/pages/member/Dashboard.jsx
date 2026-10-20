@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import DashboardCard from "../../components/cards/DashboardCard";
-import Logo from "@/components/common/Logo";
 import Loading from "@/components/ui/Loading";
 import EmptyState from "@/components/ui/EmptyState";
 import { getMemberDashboardStats, getRecentAssignedComplaints } from "../../services/dashboardService";
+import { getCategoryLabel } from "../../config/complaintCategories";
+import { useAuth } from "../../context/AuthContext";
 import {
   FiInbox,
   FiClock,
@@ -19,6 +19,7 @@ import {
 } from "react-icons/fi";
 
 const Dashboard = () => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [statsData, setStatsData] = useState({
@@ -68,46 +69,96 @@ const Dashboard = () => {
     fetchDashboardData();
   }, []);
 
-  // Stats Data for Department Member Cards using existing DashboardCard component
-  const stats = [
+  // Helpers for priority and status badge styling
+  const getPriorityBadgeClass = (priority) => {
+    switch (priority?.toLowerCase()) {
+      case "critical":
+        return "bg-red-50 text-red-700 border-red-100";
+      case "high":
+        return "bg-orange-50 text-orange-700 border-orange-100";
+      case "medium":
+        return "bg-amber-50 text-amber-700 border-amber-100";
+      default:
+        return "bg-slate-50 text-slate-700 border-slate-200";
+    }
+  };
+
+  const getStatusBadgeClass = (status) => {
+    switch (status?.toLowerCase()) {
+      case "pending":
+        return "bg-orange-50 text-orange-700 border-orange-200";
+      case "in progress":
+        return "bg-blue-50 text-blue-700 border-blue-200";
+      case "resolved":
+        return "bg-green-50 text-green-700 border-green-200";
+      case "closed":
+        return "bg-slate-50 text-slate-700 border-slate-200";
+      default:
+        return "bg-slate-50 text-slate-700 border-slate-200";
+    }
+  };
+
+  if (loading) {
+    return <Loading message="Loading dashboard statistics..." />;
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 bg-red-50 border border-red-200 rounded-3xl space-y-4 max-w-xl mx-auto my-12 text-center shadow-sm">
+        <FiAlertCircle className="w-10 h-10 text-red-600 mx-auto" />
+        <h3 className="text-lg font-bold text-red-900">Dashboard API Error</h3>
+        <p className="text-sm text-red-700">{error}</p>
+        <button
+          onClick={fetchDashboardData}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs font-semibold transition-all shadow-sm"
+        >
+          <FiRefreshCw className="w-3.5 h-3.5" />
+          <span>Retry Loading</span>
+        </button>
+      </div>
+    );
+  }
+
+  const userFirstName = user?.fullName ? user.fullName.split(" ")[0] : "Representative";
+
+  const cards = [
     {
       title: "Assigned Complaints",
       value: statsData.total,
-      icon: FiInbox,
-      color: "indigo",
-      description: "Total assigned to you",
+      icon: <FiInbox size={24} />,
+      gradient: "from-indigo-500 to-blue-600",
+      label: "Total assigned to you",
     },
     {
       title: "Pending",
       value: statsData.pending,
-      icon: FiClock,
-      color: "yellow",
-      description: "Awaiting initial action",
+      icon: <FiClock size={24} />,
+      gradient: "from-amber-400 to-orange-500",
+      label: "Awaiting Action",
     },
     {
       title: "In Progress",
       value: statsData.inProgress,
-      icon: FiActivity,
-      color: "blue",
-      description: "Work underway",
+      icon: <FiActivity size={24} />,
+      gradient: "from-sky-400 to-blue-500",
+      label: "Being Resolved",
     },
     {
       title: "Resolved",
       value: statsData.resolved,
-      icon: FiCheckCircle,
-      color: "green",
-      description: "Resolution submitted",
+      icon: <FiCheckCircle size={24} />,
+      gradient: "from-emerald-400 to-green-500",
+      label: "Successfully Closed",
     },
     {
       title: "Closed",
       value: statsData.closed,
-      icon: FiCheckSquare,
-      color: "red",
-      description: "Verified & completed",
+      icon: <FiCheckSquare size={24} />,
+      gradient: "from-purple-500 to-pink-500",
+      label: "Archived complaints",
     },
   ];
 
-  // Monthly Progress Container Data
   const monthlyProgress = [
     { month: "Jan", assigned: 12, resolved: 10 },
     { month: "Feb", assigned: 18, resolved: 15 },
@@ -117,100 +168,60 @@ const Dashboard = () => {
     { month: "Jun", assigned: 20, resolved: 17 },
   ];
 
-  // Helper for priority badge styling
-  const getPriorityBadgeClass = (priority) => {
-    switch (priority?.toLowerCase()) {
-      case "critical":
-        return "bg-red-100 text-red-700 border-red-200";
-      case "high":
-        return "bg-orange-100 text-orange-700 border-orange-200";
-      case "medium":
-        return "bg-amber-100 text-amber-700 border-amber-200";
-      default:
-        return "bg-gray-100 text-gray-700 border-gray-200";
-    }
-  };
-
-  // Helper for status badge styling
-  const getStatusBadgeClass = (status) => {
-    switch (status?.toLowerCase()) {
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "in progress":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      case "resolved":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "closed":
-        return "bg-purple-100 text-purple-800 border-purple-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
-
-  // 1. Loading State (reusing Loading component)
-  if (loading) {
-    return <Loading message="Loading dashboard statistics..." />;
-  }
-
-  // 2. Error State
-  if (error) {
-    return (
-      <div className="p-6 bg-red-50 border border-red-200 rounded-2xl space-y-4 max-w-xl mx-auto my-12 text-center">
-        <FiAlertCircle className="w-10 h-10 text-red-600 mx-auto" />
-        <h3 className="text-lg font-bold text-red-900">Dashboard API Error</h3>
-        <p className="text-sm text-red-700">{error}</p>
-        <button
-          onClick={fetchDashboardData}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm"
-        >
-          <FiRefreshCw className="w-3.5 h-3.5" />
-          <span>Retry Loading</span>
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-8">
-      {/* Header matching Admin Dashboard design */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Logo iconOnly size="h-9" />
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 leading-tight">
-              Department Member Dashboard
-            </h1>
-            <p className="text-gray-500 mt-1">
-              Overview of your assigned tasks, active complaints, and monthly workload metrics.
-            </p>
-          </div>
-        </div>
+    <div className="space-y-10 p-2">
+      {/* Welcome Header */}
+      <div>
+        <p className="text-sm text-slate-500 font-semibold mb-1">
+          Welcome back, {userFirstName}! 👋
+        </p>
+        <h1 className="text-4xl font-bold text-slate-900 tracking-tight leading-tight">
+          Department Member Dashboard
+        </h1>
+        <p className="text-sm text-slate-500 mt-1">
+          Overview of your assigned tasks, active complaints, and monthly workload metrics.
+        </p>
       </div>
 
-      {/* 1. Dashboard Cards Grid (5 Cards using DashboardCard) */}
+      {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-        {stats.map((stat, idx) => (
-          <DashboardCard
-            key={idx}
-            title={stat.title}
-            value={stat.value}
-            icon={stat.icon}
-            color={stat.color}
-            description={stat.description}
-          />
+        {cards.map((card, index) => (
+          <div
+            key={index}
+            className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between h-full"
+          >
+            <div className="flex items-center gap-4">
+              <div className={`p-3.5 rounded-2xl bg-gradient-to-tr ${card.gradient} text-white shrink-0 shadow-sm`}>
+                {card.icon}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider truncate">
+                  {card.title}
+                </p>
+                <h2 className="text-3xl font-extrabold text-slate-900 mt-1">
+                  {card.value}
+                </h2>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                {card.label}
+              </span>
+            </div>
+          </div>
         ))}
       </div>
 
-      {/* 2. Main Content Grid (3 Placeholder Sections) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column (Span 2): Recent Assigned Complaints & Monthly Progress Chart */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Section 1: Recent Assigned Complaints */}
-          <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-5">
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column (Span 2) */}
+        <div className="lg:col-span-2 space-y-8">
+          {/* Recent Assigned Complaints */}
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 hover:shadow-lg transition-all duration-300">
+            <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <FiList className="w-5 h-5 text-indigo-600" />
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 className="text-lg font-bold text-slate-900 tracking-tight">
                   Recent Assigned Complaints
                 </h2>
               </div>
@@ -219,7 +230,6 @@ const Dashboard = () => {
               </span>
             </div>
 
-            {/* 3. Empty State (reusing EmptyState component) */}
             {recentAssignedComplaints.length === 0 ? (
               <EmptyState
                 title="No assigned complaints"
@@ -227,51 +237,53 @@ const Dashboard = () => {
               />
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-gray-600">
-                  <thead className="bg-gray-50 text-gray-700 font-semibold uppercase text-xs border-y border-gray-200">
-                    <tr>
-                      <th className="py-3 px-4">Complaint ID</th>
-                      <th className="py-3 px-4">Title</th>
-                      <th className="py-3 px-4">Category</th>
-                      <th className="py-3 px-4">Priority</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4 text-right">Assigned Date</th>
+                <table className="w-full text-left text-sm text-slate-600 border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-400 font-bold text-xs uppercase tracking-wider">
+                      <th className="pb-4 pt-2 px-4">Complaint ID</th>
+                      <th className="pb-4 pt-2 px-4">Title</th>
+                      <th className="pb-4 pt-2 px-4">Category</th>
+                      <th className="pb-4 pt-2 px-4">Priority</th>
+                      <th className="pb-4 pt-2 px-4">Status</th>
+                      <th className="pb-4 pt-2 px-4 text-right">Assigned Date</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-slate-50">
                     {recentAssignedComplaints.map((item) => (
                       <tr
                         key={item._id || item.id}
-                        className="hover:bg-gray-50/80 transition-colors"
+                        className="hover:bg-slate-50 cursor-pointer transition-all duration-200 group"
                       >
-                        <td className="py-3.5 px-4 font-bold text-gray-900">
-                          {item.id || item._id?.substring(0, 8) || "CMP-1089"}
+                        <td className="py-4 px-4 font-mono text-xs text-slate-500">
+                          #{item.id || item._id?.substring(0, 8).toUpperCase() || "CMP-1089"}
                         </td>
-                        <td className="py-3.5 px-4 font-medium text-gray-800">
+                        <td className="py-4 px-4 font-semibold text-slate-900">
                           {item.title}
                         </td>
-                        <td className="py-3.5 px-4 text-gray-500">
-                          {item.category || "General"}
+                        <td className="py-4 px-4">
+                          <span className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-semibold border border-slate-200">
+                            {getCategoryLabel(item.category)}
+                          </span>
                         </td>
-                        <td className="py-3.5 px-4">
+                        <td className="py-4 px-4">
                           <span
-                            className={`inline-block px-2.5 py-0.5 text-xs font-semibold rounded-md border ${getPriorityBadgeClass(
+                            className={`inline-block px-3 py-1 text-xs font-semibold rounded-full border ${getPriorityBadgeClass(
                               item.priority
                             )}`}
                           >
                             {item.priority || "Medium"}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4">
+                        <td className="py-4 px-4">
                           <span
-                            className={`inline-block px-2.5 py-0.5 text-xs font-semibold rounded-md border ${getStatusBadgeClass(
+                            className={`inline-block px-3 py-1 text-xs font-semibold rounded-full border ${getStatusBadgeClass(
                               item.status
                             )}`}
                           >
                             {item.status || "Pending"}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-right text-xs text-gray-400">
+                        <td className="py-4 px-4 text-right text-xs text-slate-400">
                           {item.createdAt
                             ? new Date(item.createdAt).toLocaleDateString()
                             : item.assignedDate || "Today"}
@@ -284,16 +296,16 @@ const Dashboard = () => {
             )}
           </div>
 
-          {/* Section 2: Monthly Progress Chart (Container Only) */}
-          <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-6">
+          {/* Monthly Progress Chart */}
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 hover:shadow-lg transition-all duration-300">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <FiTrendingUp className="w-5 h-5 text-indigo-600" />
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 className="text-lg font-bold text-slate-900 tracking-tight">
                   Monthly Progress Chart
                 </h2>
               </div>
-              <div className="flex items-center gap-4 text-xs font-medium text-gray-500">
+              <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 bg-indigo-500 rounded-sm"></span> Assigned
                 </span>
@@ -303,64 +315,64 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Visual Chart Representation */}
-            <div className="h-48 flex items-end justify-between gap-4 pt-4 border-b border-gray-200 px-4">
+            {/* Visual Chart Representation - Height increased to h-64 to let it breathe */}
+            <div className="h-64 flex items-end justify-between gap-6 pt-4 border-b border-slate-100 px-6">
               {monthlyProgress.map((item, idx) => (
                 <div key={idx} className="flex-1 flex flex-col items-center gap-2 group">
-                  <div className="w-full flex items-end justify-center gap-1.5 h-36">
+                  <div className="w-full flex items-end justify-center gap-2 h-52">
                     <div
-                      className="w-1/2 bg-indigo-500 rounded-t-md transition-all duration-300 group-hover:bg-indigo-600"
+                      className="w-1/2 bg-indigo-500 rounded-t-lg transition-all duration-300 group-hover:bg-indigo-600 shadow-sm"
                       style={{ height: `${(item.assigned / 25) * 100}%` }}
                       title={`Assigned: ${item.assigned}`}
                     ></div>
                     <div
-                      className="w-1/2 bg-emerald-500 rounded-t-md transition-all duration-300 group-hover:bg-emerald-600"
+                      className="w-1/2 bg-emerald-500 rounded-t-lg transition-all duration-300 group-hover:bg-emerald-600 shadow-sm"
                       style={{ height: `${(item.resolved / 25) * 100}%` }}
                       title={`Resolved: ${item.resolved}`}
                     ></div>
                   </div>
-                  <span className="text-xs font-semibold text-gray-600">
+                  <span className="text-xs font-semibold text-slate-500 mt-1">
                     {item.month}
                   </span>
                 </div>
               ))}
             </div>
-            <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
-              <span>Overall Resolution Rate: <strong className="text-emerald-600">86.6%</strong></span>
-              <span>Average Resolution Time: <strong className="text-indigo-600">1.8 Days</strong></span>
+            <div className="mt-5 flex items-center justify-between text-xs text-slate-500">
+              <span>Overall Resolution Rate: <strong className="text-emerald-600 font-bold">86.6%</strong></span>
+              <span>Average Resolution Time: <strong className="text-indigo-600 font-bold">1.8 Days</strong></span>
             </div>
           </div>
         </div>
 
-        {/* Right Column (Span 1): My Workload */}
-        <div className="space-y-6">
-          {/* Section 3: My Workload */}
-          <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-5">
+        {/* Right Column (Span 1) */}
+        <div className="space-y-8">
+          {/* My Workload */}
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 hover:shadow-lg transition-all duration-300 space-y-6">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FiPieChart className="w-5 h-5 text-indigo-600" />
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 className="text-lg font-bold text-slate-900 tracking-tight">
                   My Workload
                 </h2>
               </div>
-              <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
                 Optimal Capacity
               </span>
             </div>
 
             {/* Workload Progress Indicators */}
-            <div className="space-y-4 mb-6">
+            <div className="space-y-6">
               <div>
-                <div className="flex justify-between text-sm font-semibold mb-1">
-                  <span className="text-gray-700">Active Task Load</span>
+                <div className="flex justify-between text-sm font-semibold mb-2">
+                  <span className="text-slate-700">Active Task Load</span>
                   <span className="text-indigo-600">
                     {statsData.inProgress + statsData.pending} / 10 Slots (
                     {Math.round(((statsData.inProgress + statsData.pending) / 10) * 100)}%)
                   </span>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
                   <div
-                    className="bg-indigo-600 h-3 rounded-full transition-all duration-500"
+                    className="bg-indigo-600 h-3 rounded-full transition-all duration-500 shadow-sm"
                     style={{
                       width: `${Math.min(
                         100,
@@ -372,39 +384,39 @@ const Dashboard = () => {
               </div>
 
               {/* Priority Breakdown */}
-              <div className="pt-3 border-t border-gray-100 space-y-3">
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+              <div className="pt-5 border-t border-slate-50 space-y-4">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                   Priority Breakdown
                 </h3>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div>
-                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                    <div className="flex justify-between text-xs text-slate-500 mb-1.5">
                       <span>Critical / High Priority</span>
                       <span className="font-semibold text-red-600">40%</span>
                     </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                       <div className="bg-red-500 h-2 rounded-full" style={{ width: "40%" }}></div>
                     </div>
                   </div>
 
                   <div>
-                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                    <div className="flex justify-between text-xs text-slate-500 mb-1.5">
                       <span>Medium Priority</span>
                       <span className="font-semibold text-amber-600">40%</span>
                     </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                       <div className="bg-amber-500 h-2 rounded-full" style={{ width: "40%" }}></div>
                     </div>
                   </div>
 
                   <div>
-                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                    <div className="flex justify-between text-xs text-slate-500 mb-1.5">
                       <span>Low Priority</span>
-                      <span className="font-semibold text-gray-600">20%</span>
+                      <span className="font-semibold text-slate-600">20%</span>
                     </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                      <div className="bg-gray-400 h-2 rounded-full" style={{ width: "20%" }}></div>
+                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                      <div className="bg-slate-400 h-2 rounded-full" style={{ width: "20%" }}></div>
                     </div>
                   </div>
                 </div>
@@ -412,12 +424,12 @@ const Dashboard = () => {
             </div>
 
             {/* Quick Efficiency Card */}
-            <div className="bg-indigo-50/60 rounded-xl p-4 border border-indigo-100 space-y-2">
+            <div className="bg-indigo-50/60 rounded-2xl p-4 border border-indigo-100 space-y-2">
               <div className="flex items-center gap-2 text-indigo-900 font-semibold text-sm">
                 <FiArrowUpRight className="w-4 h-4 text-indigo-600" />
                 Workload Efficiency
               </div>
-              <p className="text-xs text-indigo-700 leading-relaxed">
+              <p className="text-xs text-indigo-700 leading-relaxed font-medium">
                 You have resolved {statsData.resolved} complaints so far. Maintaining current pace will meet your monthly SLA target easily.
               </p>
             </div>

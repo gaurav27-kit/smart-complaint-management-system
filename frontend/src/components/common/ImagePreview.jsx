@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 /**
  * ImagePreview — Shows a thumbnail preview of a local file (not yet uploaded).
@@ -11,12 +11,18 @@ import React, { useState } from "react";
  */
 const ImagePreview = ({ file, onRemove, index }) => {
   const [loaded, setLoaded] = useState(false);
-  const previewUrl = React.useMemo(() => URL.createObjectURL(file), [file]);
+  const [previewUrl, setPreviewUrl] = useState("");
 
-  // Revoke object URL on unmount to free memory
-  React.useEffect(() => {
-    return () => URL.revokeObjectURL(previewUrl);
-  }, [previewUrl]);
+  // Create and manage object URL inside useEffect to avoid StrictMode double-mount revocation bugs
+  useEffect(() => {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [file]);
 
   const fileSizeDisplay =
     file.size < 1024 * 1024
@@ -26,17 +32,19 @@ const ImagePreview = ({ file, onRemove, index }) => {
   return (
     <div className="group relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50 shadow-sm transition-shadow hover:shadow-md">
       {/* Skeleton loader */}
-      {!loaded && (
+      {(!previewUrl || !loaded) && (
         <div className="absolute inset-0 bg-gray-200 animate-pulse rounded-xl" />
       )}
 
-      <img
-        src={previewUrl}
-        alt={`Preview ${index + 1}: ${file.name}`}
-        className={`w-full h-32 object-cover transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
-        onLoad={() => setLoaded(true)}
-        loading="lazy"
-      />
+      {previewUrl && (
+        <img
+          src={previewUrl}
+          alt={`Preview ${index + 1}: ${file.name}`}
+          className={`w-full h-32 object-cover transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
+          onLoad={() => setLoaded(true)}
+          loading="lazy"
+        />
+      )}
 
       {/* Remove button */}
       <button

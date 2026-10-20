@@ -1,13 +1,26 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, X, Search, Filter } from "lucide-react";
+import { Eye, X, Search, Filter, UserCheck, Loader2 } from "lucide-react";
+import { FiAlertCircle, FiRefreshCw } from "react-icons/fi";
+import toast from "react-hot-toast";
 import StatusBadge from "../../components/badges/StatusBadge";
 import Loading from "@/components/ui/Loading";
 import EmptyState from "@/components/ui/EmptyState";
+import {
+  getRecentAssignedComplaints,
+  getDepartmentOfficers,
+  assignMemberComplaint,
+  getMemberProfile,
+} from "../../services/dashboardService";
+import { getCategoryLabel } from "../../config/complaintCategories";
 
 const AssignedComplaints = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [complaintsList, setComplaintsList] = useState([]);
+  const [deptRole, setDeptRole] = useState("FIELD_OFFICER");
+  const [officers, setOfficers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedPriority, setSelectedPriority] = useState("");
@@ -18,69 +31,86 @@ const AssignedComplaints = () => {
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Mock Data: Only complaints assigned to logged-in department member
-  const mockAssignedComplaints = [
-    {
-      id: "CMP-1089",
-      title: "Street Light Fault in Block B",
-      category: "Infrastructure",
-      priority: "High",
-      status: "In Progress",
-      assignedDate: "2026-07-26",
-      location: "Main Avenue, Block B",
-      description: "Street lights on pole #4 and #5 are completely flicking and non-functional at night.",
-    },
-    {
-      id: "CMP-1075",
-      title: "Water Supply Disruption near Sector 4",
-      category: "Water Supply",
-      priority: "Critical",
-      status: "Pending",
-      assignedDate: "2026-07-26",
-      location: "Sector 4, Residential Complex",
-      description: "No water supply since morning 6 AM due to pipeline breakage near valve 3.",
-    },
-    {
-      id: "CMP-1062",
-      title: "Garbage Collection Delay in Zone 2",
-      category: "Sanitation",
-      priority: "Medium",
-      status: "Resolved",
-      assignedDate: "2026-07-25",
-      location: "Zone 2 Commercial Area",
-      description: "Waste collection bin overflowing near main market center.",
-    },
-    {
-      id: "CMP-1040",
-      title: "Park Bench Repair Request",
-      category: "Public Works",
-      priority: "Low",
-      status: "Closed",
-      assignedDate: "2026-07-23",
-      location: "Central Community Park",
-      description: "Wooden slats on two benches near playground broken.",
-    },
-    {
-      id: "CMP-1035",
-      title: "Pothole Repair on Ring Road",
-      category: "Road Infrastructure",
-      priority: "High",
-      status: "In Progress",
-      assignedDate: "2026-07-22",
-      location: "Ring Road North Junction",
-      description: "Large pothole causing traffic slowdown during peak hours.",
-    },
-    {
-      id: "CMP-1022",
-      title: "Drainage Overflow during Rainfall",
-      category: "Drainage",
-      priority: "Critical",
-      status: "Pending",
-      assignedDate: "2026-07-20",
-      location: "East Gate Sub-way",
-      description: "Drainage inlet clogged with debris causing localized waterlogging.",
-    },
-  ];
+  // Field Officer Assignment Modal State (HEAD only)
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [complaintToAssign, setComplaintToAssign] = useState(null);
+  const [selectedOfficerId, setSelectedOfficerId] = useState("");
+  const [assignLoading, setAssignLoading] = useState(false);
+
+  // Fetch assigned complaints from backend endpoint: GET /api/member/complaints
+  const fetchComplaints = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = {};
+      if (selectedStatus) params.status = selectedStatus;
+      if (selectedPriority) params.priority = selectedPriority;
+      if (searchQuery.trim()) params.search = searchQuery.trim();
+
+      const responseData = await getRecentAssignedComplaints(params);
+      let currentDeptRole = responseData?.deptRole;
+
+      if (!currentDeptRole) {
+        try {
+          const profile = await getMemberProfile();
+          currentDeptRole = profile?.deptRole || profile?.member?.deptRole;
+        } catch {
+          currentDeptRole = "FIELD_OFFICER";
+        }
+      }
+
+      if (currentDeptRole) {
+        setDeptRole(currentDeptRole);
+      }
+
+      const list = Array.isArray(responseData)
+        ? responseData
+        : responseData?.complaints || responseData?.data || [];
+      setComplaintsList(list);
+
+      // If HEAD, fetch active field officers for assignment dropdown
+      if (currentDeptRole === "HEAD") {
+        try {
+          const officersRes = await getDepartmentOfficers();
+          setOfficers(officersRes.officers || []);
+        } catch {
+          // Ignore silently if field officer fetch fails
+        }
+      }
+    } catch (err) {
+      setError(err.message || "Failed to load assigned complaints.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchComplaints();
+  }, [selectedStatus, selectedPriority, searchQuery]);
+
+  const handleOpenAssignModal = (complaint) => {
+    setComplaintToAssign(complaint);
+    setSelectedOfficerId(complaint.assignedMember?._id || complaint.assignedMember || "");
+    setAssignModalOpen(true);
+  };
+
+  const handleAssignSubmit = async (e) => {
+    e.preventDefault();
+    if (!complaintToAssign || !selectedOfficerId) return;
+
+    try {
+      setAssignLoading(true);
+      await assignMemberComplaint(complaintToAssign._id || complaintToAssign.id, selectedOfficerId);
+      toast.success("Complaint assigned to Field Officer successfully!");
+      setAssignModalOpen(false);
+      setComplaintToAssign(null);
+      fetchComplaints();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to assign field officer.");
+    } finally {
+      setAssignLoading(false);
+    }
+  };
 
   // Helper for priority badge styling matching Admin Dashboard
   const getPriorityBadgeClass = (priority) => {
@@ -99,23 +129,29 @@ const AssignedComplaints = () => {
 
   // Filter complaints based on search query, status, and priority
   const filteredComplaints = useMemo(() => {
-    return mockAssignedComplaints.filter((complaint) => {
+    return complaintsList.filter((complaint) => {
+      const title = complaint.title || "";
+      const id = complaint.id || complaint._id || "";
+      const category = complaint.category || "";
+      const status = complaint.status || "";
+      const priority = complaint.priority || "";
+
       const matchesSearch =
-        complaint.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        complaint.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        complaint.category.toLowerCase().includes(searchQuery.toLowerCase());
+        title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        category.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesStatus = selectedStatus
-        ? complaint.status.toLowerCase() === selectedStatus.toLowerCase()
+        ? status.toLowerCase() === selectedStatus.toLowerCase()
         : true;
 
       const matchesPriority = selectedPriority
-        ? complaint.priority.toLowerCase() === selectedPriority.toLowerCase()
+        ? priority.toLowerCase() === selectedPriority.toLowerCase()
         : true;
 
       return matchesSearch && matchesStatus && matchesPriority;
     });
-  }, [searchQuery, selectedStatus, selectedPriority]);
+  }, [complaintsList, searchQuery, selectedStatus, selectedPriority]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredComplaints.length / itemsPerPage) || 1;
@@ -125,7 +161,8 @@ const AssignedComplaints = () => {
   }, [filteredComplaints, currentPage, itemsPerPage]);
 
   const handleOpenDetails = (complaint) => {
-    navigate(`/member/complaints/${complaint.id}`);
+    const complaintId = complaint.id || complaint._id;
+    navigate(`/member/complaints/${complaintId}`);
   };
 
   const handleCloseDetails = () => {
@@ -133,10 +170,29 @@ const AssignedComplaints = () => {
     setIsModalOpen(false);
   };
 
+  // 1. Loading State (reusing Loading component)
   if (loading) {
     return (
       <div className="py-12">
         <Loading message="Loading assigned complaints..." />
+      </div>
+    );
+  }
+
+  // 2. Error State with Retry Button
+  if (error) {
+    return (
+      <div className="p-6 bg-red-50 border border-red-200 rounded-2xl space-y-4 max-w-xl mx-auto my-12 text-center">
+        <FiAlertCircle className="w-10 h-10 text-red-600 mx-auto" />
+        <h3 className="text-lg font-bold text-red-900">Failed to Load Complaints</h3>
+        <p className="text-sm text-red-700">{error}</p>
+        <button
+          onClick={fetchComplaints}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm"
+        >
+          <FiRefreshCw className="w-3.5 h-3.5" />
+          <span>Retry Loading</span>
+        </button>
       </div>
     );
   }
@@ -199,7 +255,6 @@ const AssignedComplaints = () => {
             className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700"
           >
             <option value="">All Priorities</option>
-            <option value="Critical">Critical</option>
             <option value="High">High</option>
             <option value="Medium">Medium</option>
             <option value="Low">Low</option>
@@ -224,6 +279,7 @@ const AssignedComplaints = () => {
 
       {/* Complaints Table Container */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* 3. Empty State (reusing EmptyState component) */}
         {filteredComplaints.length === 0 ? (
           <div className="p-6">
             <EmptyState
@@ -249,12 +305,12 @@ const AssignedComplaints = () => {
               <tbody className="divide-y divide-gray-100 bg-white">
                 {paginatedComplaints.map((complaint) => (
                   <tr
-                    key={complaint.id}
+                    key={complaint.id || complaint._id}
                     className="hover:bg-gray-50/80 transition-colors"
                   >
                     {/* Complaint ID */}
                     <td className="px-5 py-4 font-bold text-gray-900">
-                      {complaint.id}
+                      {complaint.id || complaint._id?.substring(0, 8) || "CMP-1089"}
                     </td>
 
                     {/* Title */}
@@ -265,7 +321,7 @@ const AssignedComplaints = () => {
                     {/* Category */}
                     <td className="px-5 py-4">
                       <span className="px-2.5 py-1 text-xs font-medium bg-slate-100 text-slate-700 rounded-md">
-                        {complaint.category}
+                        {getCategoryLabel(complaint.category)}
                       </span>
                     </td>
 
@@ -276,30 +332,45 @@ const AssignedComplaints = () => {
                           complaint.priority
                         )}`}
                       >
-                        {complaint.priority}
+                        {complaint.priority || "Medium"}
                       </span>
                     </td>
 
                     {/* Status */}
                     <td className="px-5 py-4">
-                      <StatusBadge status={complaint.status} />
+                      <StatusBadge status={complaint.status || "Pending"} />
                     </td>
 
                     {/* Assigned Date */}
                     <td className="px-5 py-4 text-gray-500 text-xs">
-                      {complaint.assignedDate}
+                      {complaint.createdAt
+                        ? new Date(complaint.createdAt).toLocaleDateString()
+                        : complaint.assignedDate || "Today"}
                     </td>
 
-                    {/* Action Column: View Details Button only */}
+                    {/* Action Column */}
                     <td className="px-5 py-4 text-center">
-                      <button
-                        onClick={() => handleOpenDetails(complaint)}
-                        className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-sm"
-                        title="View Details"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>View Details</span>
-                      </button>
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleOpenDetails(complaint)}
+                          className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-sm"
+                          title="View Details"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>View</span>
+                        </button>
+
+                        {deptRole === "HEAD" && (
+                          <button
+                            onClick={() => handleOpenAssignModal(complaint)}
+                            className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-sm"
+                            title="Assign / Reassign Field Officer"
+                          >
+                            <UserCheck className="w-3.5 h-3.5" />
+                            <span>{complaint.assignedMember ? "Reassign" : "Assign Officer"}</span>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -308,7 +379,7 @@ const AssignedComplaints = () => {
           </div>
         )}
 
-        {/* Pagination Bar Placeholder */}
+        {/* Pagination Bar */}
         {filteredComplaints.length > 0 && (
           <div className="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex items-center justify-between text-xs text-gray-600">
             <div>
@@ -355,7 +426,7 @@ const AssignedComplaints = () => {
                   Complaint Details
                 </span>
                 <h3 className="text-lg font-bold text-gray-900 mt-0.5">
-                  {selectedComplaint.id}
+                  {selectedComplaint.id || selectedComplaint._id}
                 </h3>
               </div>
               <button
@@ -379,13 +450,15 @@ const AssignedComplaints = () => {
                 <div>
                   <label className="text-xs font-semibold text-gray-400 uppercase">Category</label>
                   <p className="font-medium text-gray-800 mt-0.5">
-                    {selectedComplaint.category}
+                    {getCategoryLabel(selectedComplaint.category)}
                   </p>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-400 uppercase">Assigned Date</label>
                   <p className="font-medium text-gray-800 mt-0.5">
-                    {selectedComplaint.assignedDate}
+                    {selectedComplaint.createdAt
+                      ? new Date(selectedComplaint.createdAt).toLocaleDateString()
+                      : selectedComplaint.assignedDate}
                   </p>
                 </div>
               </div>
@@ -399,14 +472,14 @@ const AssignedComplaints = () => {
                         selectedComplaint.priority
                       )}`}
                     >
-                      {selectedComplaint.priority}
+                      {selectedComplaint.priority || "Medium"}
                     </span>
                   </div>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-400 uppercase">Status</label>
                   <div className="mt-1">
-                    <StatusBadge status={selectedComplaint.status} />
+                    <StatusBadge status={selectedComplaint.status || "Pending"} />
                   </div>
                 </div>
               </div>
@@ -435,6 +508,67 @@ const AssignedComplaints = () => {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Field Officer Modal (HEAD Only) */}
+      {assignModalOpen && complaintToAssign && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 relative">
+            <div className="flex justify-between items-center mb-4 border-b pb-3">
+              <h3 className="text-lg font-bold text-gray-900">Assign Field Officer</h3>
+              <button
+                onClick={() => setAssignModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAssignSubmit} className="space-y-4">
+              <div>
+                <p className="text-xs text-gray-500">Complaint</p>
+                <p className="font-semibold text-gray-900 text-sm mt-0.5">{complaintToAssign.title}</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">
+                  Select Field Officer
+                </label>
+                <select
+                  value={selectedOfficerId}
+                  onChange={(e) => setSelectedOfficerId(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  required
+                >
+                  <option value="">-- Select Field Officer --</option>
+                  {officers.map((officer) => (
+                    <option key={officer._id} value={officer._id}>
+                      {officer.user?.fullName || "Officer"} ({officer.deptRole || "FIELD_OFFICER"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={() => setAssignModalOpen(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={assignLoading || !selectedOfficerId}
+                  className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-xs font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {assignLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Save Assignment</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

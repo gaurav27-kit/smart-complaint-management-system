@@ -55,7 +55,7 @@ const ResolutionNotesModal = ({
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!noteText.trim()) {
@@ -64,11 +64,13 @@ const ResolutionNotesModal = ({
     }
 
     if (onSave) {
-      onSave(noteText.trim());
+      try {
+        await onSave(noteText.trim());
+        setNoteText("");
+      } catch (err) {
+        // Keep modal open and preserve noteText on failure
+      }
     }
-
-    setNoteText("");
-    if (onClose) onClose();
   };
 
   return (

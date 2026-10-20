@@ -6,6 +6,10 @@ import ImageUploader from "../common/ImageUploader";
 import aiService from "../../services/aiService";
 import AILoadingState from "../ai/AILoadingState";
 import AIAnalysisCard from "../ai/AIAnalysisCard";
+import {
+  COMPLAINT_CATEGORIES,
+  mapAISuggestionToCategory,
+} from "../../config/complaintCategories";
 
 const COMPRESSION_OPTIONS = {
   maxSizeMB: 1, // Compress down to ~1 MB before upload
@@ -17,7 +21,7 @@ const ComplaintForm = ({ onSubmit, initialData = null, isLoading = false }) => {
   const [formData, setFormData] = useState({
     title: initialData?.title || "",
     description: initialData?.description || "",
-    category: initialData?.category || "Other",
+    category: initialData?.category || "OTHER",
     location: initialData?.location || "",
     priority: initialData?.priority || "Medium",
   });
@@ -35,16 +39,6 @@ const ComplaintForm = ({ onSubmit, initialData = null, isLoading = false }) => {
   const [aiAnalysis, setAiAnalysis] = useState(null);
   const [aiMetadata, setAiMetadata] = useState(initialData?.aiMetadata || null);
   const [lastAnalyzedText, setLastAnalyzedText] = useState("");
-
-  const categories = [
-    "Road",
-    "Water",
-    "Electricity",
-    "Garbage",
-    "Street Light",
-    "Drainage",
-    "Other",
-  ];
 
   const priorities = ["Low", "Medium", "High"];
 
@@ -104,13 +98,15 @@ const ComplaintForm = ({ onSubmit, initialData = null, isLoading = false }) => {
 
   const handleApplySuggestions = () => {
     if (!aiAnalysis) return;
-    
+
+    const mappedCat = mapAISuggestionToCategory(aiAnalysis.category);
+
     setFormData((prev) => ({
       ...prev,
-      category: categories.includes(aiAnalysis.category) ? aiAnalysis.category : prev.category,
+      category: mappedCat,
       priority: priorities.includes(aiAnalysis.priority) ? aiAnalysis.priority : prev.priority,
     }));
-    
+
     // Store metadata for backend analytics
     setAiMetadata({
       prediction: aiAnalysis,
@@ -118,7 +114,7 @@ const ComplaintForm = ({ onSubmit, initialData = null, isLoading = false }) => {
       modelName: aiAnalysis.modelName,
       generatedAt: aiAnalysis.generatedAt,
     });
-    
+
     setAiAnalysis(null);
     toast.success("AI suggestions applied!");
   };
@@ -227,9 +223,9 @@ const ComplaintForm = ({ onSubmit, initialData = null, isLoading = false }) => {
             onChange={handleChange}
             className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
           >
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
+            {COMPLAINT_CATEGORIES.map((cat) => (
+              <option key={cat.value} value={cat.value}>
+                {cat.label}
               </option>
             ))}
           </select>

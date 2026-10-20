@@ -9,11 +9,15 @@ import {
   getComplaintById,
   updateComplaintStatus,
   deleteComplaint,
+  getDepartments,
+  assignDepartmentToComplaint,
 } from "../../services/adminService";
+import { getCategoryLabel } from "../../config/complaintCategories";
 
 const AllComplaints = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [complaints, setComplaints] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Derive parameters from query string (Single source of truth)
@@ -23,6 +27,8 @@ const AllComplaints = () => {
   const category = searchParams.get("category") || "";
   const sort = searchParams.get("sort") || "newest";
   const page = parseInt(searchParams.get("page"), 10) || 1;
+  // unassigned=true: show only complaints with no department assigned
+  const unassigned = searchParams.get("unassigned") === "true";
 
   const [totalPages, setTotalPages] = useState(1);
   const limit = 10;
@@ -32,10 +38,11 @@ const AllComplaints = () => {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewLoading, setViewLoading] = useState(false);
 
-  // Update Status Modal state
+  // Update Status & Department Modal state
   const [updateOpen, setUpdateOpen] = useState(false);
   const [complaintToUpdate, setComplaintToUpdate] = useState(null);
   const [newStatus, setNewStatus] = useState("");
+  const [selectedDept, setSelectedDept] = useState("");
   const [updateLoading, setUpdateLoading] = useState(false);
 
   // Delete Modal state
@@ -46,22 +53,29 @@ const AllComplaints = () => {
   const fetchComplaints = async () => {
     try {
       setLoading(true);
-      const res = await getAllComplaints({
-        search,
-        status,
-        priority,
-        category,
-        sort,
-        page,
-        limit,
-      });
-
-      setComplaints(res.complaints || []);
-      setTotalPages(res.totalPages || 1);
+      const [complaintsRes, deptsRes] = await Promise.all([
+        getAllComplaints({
+          search,
+          status,
+          priority,
+          category,
+          sort,
+          page,
+          limit,
+          ...(unassigned && { unassigned: "true" }),
+        }),
+        getDepartments(),
+      ]);
+      setComplaints(complaintsRes.complaints || []);
+      setTotalPages(complaintsRes.totalPages || 1);
+      const loadedDepts = Array.isArray(deptsRes.departments)
+        ? deptsRes.departments
+        : Array.isArray(deptsRes)
+        ? deptsRes
+        : [];
+      setDepartments(loadedDepts);
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to load complaints."
-      );
+      toast.error("Failed to fetch complaints.");
     } finally {
       setLoading(false);
     }
@@ -69,28 +83,24 @@ const AllComplaints = () => {
 
   useEffect(() => {
     fetchComplaints();
-  }, [search, status, priority, category, sort, page]);
+  }, [search, status, priority, category, sort, page, unassigned]);
 
   // Sync back search parameter updates to URL query string
   const updateSearchParam = (key, value) => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      if (value) {
-        next.set(key, value);
-      } else {
-        next.delete(key);
-      }
-      next.set("page", "1"); // Reset pagination on filter change
-      return next;
-    });
+    const newParams = new URLSearchParams(searchParams);
+    if (value) {
+      newParams.set(key, value);
+    } else {
+      newParams.delete(key);
+    }
+    newParams.set("page", "1"); // Reset pagination on filter change
+    setSearchParams(newParams);
   };
 
   const handlePageChange = (newPage) => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.set("page", newPage.toString());
-      return next;
-    });
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("page", newPage.toString());
+    setSearchParams(newParams);
   };
 
   const handleViewComplaint = async (id) => {
@@ -110,24 +120,39 @@ const AllComplaints = () => {
 
   const handleOpenUpdateModal = (complaint) => {
     setComplaintToUpdate(complaint);
-    setNewStatus(complaint.status);
+    setNewStatus(complaint.status || "Pending");
+    setSelectedDept(complaint.department?._id || complaint.department || "");
     setUpdateOpen(true);
   };
 
   const handleUpdateStatusSubmit = async (e) => {
     e.preventDefault();
-    if (!complaintToUpdate || !newStatus) return;
+    if (!complaintToUpdate) return;
 
     try {
       setUpdateLoading(true);
-      await updateComplaintStatus(complaintToUpdate._id, newStatus);
-      toast.success("Complaint status updated successfully!");
+      let updated = false;
+
+      const currentDeptId = complaintToUpdate.department?._id || complaintToUpdate.department || "";
+      if (selectedDept && selectedDept !== currentDeptId) {
+        await assignDepartmentToComplaint(complaintToUpdate._id, selectedDept);
+        updated = true;
+      }
+
+      if (newStatus && newStatus !== complaintToUpdate.status) {
+        await updateComplaintStatus(complaintToUpdate._id, newStatus);
+        updated = true;
+      }
+
+      if (updated) {
+        toast.success("Complaint department / status updated successfully!");
+      }
       setUpdateOpen(false);
       setComplaintToUpdate(null);
       fetchComplaints();
     } catch (error) {
       toast.error(
-        error.response?.data?.message || "Failed to update status."
+        error.response?.data?.message || "Failed to update complaint."
       );
     } finally {
       setUpdateLoading(false);
@@ -214,6 +239,7 @@ const AllComplaints = () => {
           <option value="Garbage">Garbage</option>
           <option value="Street Light">Street Light</option>
           <option value="Drainage">Drainage</option>
+          <option value="IT">IT</option>
           <option value="Other">Other</option>
         </select>
 
@@ -265,7 +291,7 @@ const AllComplaints = () => {
 
                   <td className="px-5 py-4">
                     <span className="px-2.5 py-1 text-xs font-medium bg-slate-100 text-slate-700 rounded-md">
-                      {complaint.category}
+                      {getCategoryLabel(complaint.category)}
                     </span>
                   </td>
 
@@ -388,7 +414,7 @@ const AllComplaints = () => {
 
               <div>
                 <p className="text-gray-500 font-medium">Category</p>
-                <p className="font-semibold text-gray-900 mt-1">{selectedComplaint.category}</p>
+                <p className="font-semibold text-gray-900 mt-1">{getCategoryLabel(selectedComplaint.category)}</p>
               </div>
 
               <div>
@@ -482,6 +508,38 @@ const AllComplaints = () => {
                 <p className="text-sm font-medium text-gray-700 mb-1">
                   Complaint: <span className="font-semibold text-gray-900">{complaintToUpdate.title}</span>
                 </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-200 mb-2">
+                <div>
+                  <span className="text-gray-500 font-medium">Category:</span>
+                  <span className="font-semibold text-gray-900 ml-1">{complaintToUpdate.category || "General"}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 font-medium">Priority:</span>
+                  <span className="font-semibold text-gray-900 ml-1">{complaintToUpdate.priority || "Medium"}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Department (Suggested / Override)
+                </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  System auto-suggests department based on category. Admin can accept or override.
+                </p>
+                <select
+                  value={selectedDept}
+                  onChange={(e) => setSelectedDept(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- Select / Override Department --</option>
+                  {departments.map((dept) => (
+                    <option key={dept._id} value={dept._id}>
+                      {dept.name} ({dept.code})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

@@ -47,3 +47,44 @@ export const changeAdminPassword = async (passwordData) => {
   const response = await API.patch("/admin/change-password", passwordData);
   return response.data;
 };
+
+// Department & Department Member Services
+export const getDepartments = async (params = {}) => {
+  const response = await API.get("/departments", {
+    params: { limit: 100, isActive: "true", ...params },
+  });
+  return response.data;
+};
+
+export const getDepartmentMembers = async (departmentId = "", params = {}) => {
+  const url = departmentId
+    ? `/departments/${departmentId}/members`
+    : "/departments/members";
+  const response = await API.get(url, { params });
+  return response.data;
+};
+
+export const createDepartmentMember = async (memberData) => {
+  const url = memberData.departmentId
+    ? `/departments/${memberData.departmentId}/members`
+    : "/departments/members";
+  const response = await API.post(url, memberData);
+  return response.data;
+};
+
+export const deleteDepartmentMember = async (memberId) => {
+  const response = await API.delete(`/departments/members/${memberId}`);
+  return response.data;
+};
+
+export const reactivateDepartmentMember = async (memberId) => {
+  const response = await API.patch(`/departments/members/${memberId}/reactivate`);
+  return response.data;
+};
+
+export const assignDepartmentToComplaint = async (id, departmentId) => {
+  const response = await API.patch(`/complaints/${id}/assign-department`, {
+    departmentId,
+  });
+  return response.data;
+};

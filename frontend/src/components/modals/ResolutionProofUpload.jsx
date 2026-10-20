@@ -57,38 +57,46 @@ const ResolutionProofUpload = ({
   const [selectedFiles, setSelectedFiles] = useState([]);
   const maxSizeBytes = maxSizeMB * 1024 * 1024;
 
-  // Initialize selected files with existing/initial files
-  useEffect(() => {
-    const combined = [...existingFiles, ...initialFiles].map((item) => {
-      if (item instanceof File) {
-        return {
-          file: item,
-          id: `${item.name}_${item.size}`,
-          name: item.name,
-          size: item.size,
-          type: item.type,
-          previewUrl: item.type.startsWith("image/")
-            ? URL.createObjectURL(item)
-            : null,
-          status: item.status || "Ready",
-          isExisting: false,
-        };
-      }
-      // Meta object from backend or existing props
-      return {
-        file: null,
-        id: item.id || item.publicId || item.url || item.name,
-        name: item.name || item.fileName || "Uploaded Proof Document",
-        size: item.size || 0,
-        type: item.type || (item.url?.endsWith(".pdf") ? "application/pdf" : "image/jpeg"),
-        previewUrl: item.url || item.previewUrl || null,
-        status: item.status || "Uploaded",
-        isExisting: true,
-      };
-    });
+  const initializedRef = useRef(false);
 
-    setSelectedFiles(combined);
-  }, [existingFiles, initialFiles, isOpen]);
+  // Initialize selected files with existing/initial files when modal opens
+  useEffect(() => {
+    if (isOpen && !initializedRef.current) {
+      const combined = [...existingFiles, ...initialFiles].map((item) => {
+        if (item instanceof File) {
+          return {
+            file: item,
+            id: `${item.name}_${item.size}`,
+            name: item.name,
+            size: item.size,
+            type: item.type,
+            previewUrl: item.type?.startsWith("image/")
+              ? URL.createObjectURL(item)
+              : null,
+            status: item.status || "Ready",
+            isExisting: false,
+          };
+        }
+        // Meta object from backend or existing props
+        return {
+          file: null,
+          id: item.id || item.publicId || item.url || item.name,
+          name: item.name || item.fileName || "Uploaded Proof Document",
+          size: item.size || 0,
+          type: item.type || (item.url?.endsWith(".pdf") ? "application/pdf" : "image/jpeg"),
+          previewUrl: item.url || item.previewUrl || null,
+          status: item.status || "Uploaded",
+          isExisting: true,
+        };
+      });
+
+      setSelectedFiles(combined);
+      initializedRef.current = true;
+    } else if (!isOpen) {
+      initializedRef.current = false;
+      setSelectedFiles([]);
+    }
+  }, [isOpen, existingFiles, initialFiles]);
 
   // Accessibility: Close on ESC keypress
   useEffect(() => {
@@ -114,71 +122,77 @@ const ResolutionProofUpload = ({
 
   // Validate and add incoming files
   const processIncomingFiles = (incomingFileList) => {
+    if (!incomingFileList || incomingFileList.length === 0) return;
     const newFiles = Array.from(incomingFileList);
-    const validAdditions = [];
-    const currentKeys = new Set(selectedFiles.map((f) => `${f.name}_${f.size}`));
 
-    for (const file of newFiles) {
-      const fileKey = `${file.name}_${file.size}`;
+    setSelectedFiles((prevFiles) => {
+      const validAdditions = [];
+      const currentKeys = new Set(prevFiles.map((f) => `${f.name}_${f.size}`));
 
-      // Duplicate check
-      if (currentKeys.has(fileKey)) {
-        toast.error(`"${file.name}" is already added.`);
-        continue;
+      for (const file of newFiles) {
+        const fileKey = `${file.name}_${file.size}`;
+
+        // Duplicate check
+        if (currentKeys.has(fileKey)) {
+          toast.error(`"${file.name}" is already added.`);
+          continue;
+        }
+
+        // File type check (.jpg, .jpeg, .png, .webp, .pdf)
+        const mime = (file.type || "").toLowerCase();
+        const fileName = (file.name || "").toLowerCase();
+        const isValidType =
+          ALLOWED_MIME_TYPES.has(mime) ||
+          fileName.endsWith(".pdf") ||
+          fileName.endsWith(".jpg") ||
+          fileName.endsWith(".jpeg") ||
+          fileName.endsWith(".png") ||
+          fileName.endsWith(".webp");
+
+        if (!isValidType) {
+          toast.error(
+            `"${file.name}" is not supported. Only Images (.jpg, .png, .webp) and PDF (.pdf) are allowed.`
+          );
+          continue;
+        }
+
+        // File size check
+        if (file.size > maxSizeBytes) {
+          toast.error(`"${file.name}" exceeds the ${maxSizeMB} MB size limit.`);
+          continue;
+        }
+
+        const previewUrl = mime.startsWith("image/")
+          ? URL.createObjectURL(file)
+          : null;
+
+        validAdditions.push({
+          file,
+          id: fileKey,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          previewUrl,
+          status: "Ready",
+          isExisting: false,
+        });
+
+        currentKeys.add(fileKey);
       }
 
-      // File type check (.jpg, .jpeg, .png, .webp, .pdf)
-      const isValidType =
-        ALLOWED_MIME_TYPES.has(file.type.toLowerCase()) ||
-        file.name.toLowerCase().endsWith(".pdf") ||
-        file.name.toLowerCase().endsWith(".jpg") ||
-        file.name.toLowerCase().endsWith(".jpeg") ||
-        file.name.toLowerCase().endsWith(".png") ||
-        file.name.toLowerCase().endsWith(".webp");
+      if (validAdditions.length === 0) return prevFiles;
 
-      if (!isValidType) {
-        toast.error(
-          `"${file.name}" is not supported. Only Images (.jpg, .png, .webp) and PDF (.pdf) are allowed.`
-        );
-        continue;
+      if (prevFiles.length + validAdditions.length > maxFiles) {
+        toast.error(`Maximum allowed files limit is ${maxFiles}.`);
+        const allowedCount = maxFiles - prevFiles.length;
+        if (allowedCount > 0) {
+          return [...prevFiles, ...validAdditions.slice(0, allowedCount)];
+        }
+        return prevFiles;
       }
 
-      // File size check
-      if (file.size > maxSizeBytes) {
-        toast.error(`"${file.name}" exceeds the ${maxSizeMB} MB size limit.`);
-        continue;
-      }
-
-      const previewUrl = file.type.startsWith("image/")
-        ? URL.createObjectURL(file)
-        : null;
-
-      validAdditions.push({
-        file,
-        id: fileKey,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        previewUrl,
-        status: "Ready",
-        isExisting: false,
-      });
-
-      currentKeys.add(fileKey);
-    }
-
-    if (validAdditions.length === 0) return;
-
-    if (selectedFiles.length + validAdditions.length > maxFiles) {
-      toast.error(`Maximum allowed files limit is ${maxFiles}.`);
-      const allowedCount = maxFiles - selectedFiles.length;
-      if (allowedCount > 0) {
-        setSelectedFiles((prev) => [...prev, ...validAdditions.slice(0, allowedCount)]);
-      }
-      return;
-    }
-
-    setSelectedFiles((prev) => [...prev, ...validAdditions]);
+      return [...prevFiles, ...validAdditions];
+    });
   };
 
   const handleRemove = (fileItem, index) => {
@@ -223,15 +237,17 @@ const ResolutionProofUpload = ({
     }
   };
 
-  const handleUploadSubmit = (e) => {
+  const handleUploadSubmit = async (e) => {
     e.preventDefault();
     if (selectedFiles.length === 0) return;
 
     if (onUpload) {
-      onUpload(selectedFiles.map((f) => f.file || f));
+      try {
+        await onUpload(selectedFiles);
+      } catch (err) {
+        // Keep modal open and preserve selectedFiles on failure
+      }
     }
-    toast.success("Resolution proof uploaded successfully!");
-    if (onClose) onClose();
   };
 
   const renderStatusBadge = (status) => {

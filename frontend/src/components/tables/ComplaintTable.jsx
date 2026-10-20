@@ -1,6 +1,7 @@
 import React from "react";
 import StatusBadge from "../badges/StatusBadge";
 import ActionButtons from "../buttons/ActionButtons";
+import { getCategoryLabel } from "../../config/complaintCategories";
 
 const ComplaintTable = ({ complaints = [], onEdit, onDelete }) => {
   const formatDate = (dateString) => {
@@ -50,7 +51,7 @@ const ComplaintTable = ({ complaints = [], onEdit, onDelete }) => {
                 {/* Category */}
                 <td className="px-6 py-4">
                   <span className="px-2.5 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 rounded-md border border-indigo-100">
-                    {complaint.category}
+                    {getCategoryLabel(complaint.category)}
                   </span>
                 </td>
                 {/* Location */}

@@ -30,7 +30,7 @@ function Testimonials() {
 
   return (
 
-    <section id="testimonials" className="py-24 bg-gray-50">
+    <section id="feedback" className="py-24 bg-gray-50">
 
       <div className="max-w-7xl mx-auto px-6">
 

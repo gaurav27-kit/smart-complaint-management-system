@@ -49,7 +49,7 @@ const AdminAnalytics = () => {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [range, setRange] = useState("month");
+  const [range, setRange] = useState("all");
   const [exportingPdf, setExportingPdf] = useState(false);
   const [downloadingPngs, setDownloadingPngs] = useState({});
   const [chartWidth, setChartWidth] = useState(500);
@@ -831,6 +831,7 @@ const AdminAnalytics = () => {
               onChange={(e) => setRange(e.target.value)}
               className="bg-transparent text-sm font-semibold text-slate-800 focus:outline-none cursor-pointer pr-1"
             >
+              <option value="all">All Time</option>
               <option value="today">Today</option>
               <option value="week">This Week</option>
               <option value="month">This Month</option>

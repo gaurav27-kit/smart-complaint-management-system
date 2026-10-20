@@ -1,4 +1,4 @@
-import Navbar from "../components/layout/Navbar";
+import PublicNavbar from "../components/layout/PublicNavbar";
 import Hero from "../components/home/Hero";
 import Features from "../components/home/Features";
 import Statistics from "../components/home/Statistics";
@@ -10,7 +10,7 @@ import Footer from "../components/layout/Footer";
 function Home() {
   return (
     <>
-      <Navbar />
+      <PublicNavbar />
       <Hero />
       <Features />
       <WhyChoose />
