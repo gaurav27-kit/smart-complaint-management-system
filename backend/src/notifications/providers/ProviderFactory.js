@@ -13,6 +13,7 @@ import { SmtpProvider } from "./SmtpProvider.js";
 import { ResendProvider } from "./ResendProvider.js";
 import { SendGridProvider } from "./SendGridProvider.js";
 import { SesProvider } from "./SesProvider.js";
+import { ConsoleProvider } from "./ConsoleProvider.js";
 import logger from "../../utils/logger.js";
 
 // Singleton instance — shared across all module imports
@@ -104,10 +105,19 @@ export class ProviderFactory {
         break;
       }
 
+      case "console":
+      case "none": {
+        _providerInstance = new ConsoleProvider({
+          fromName,
+          fromEmail: fromEmail || "no-reply@scms.local",
+        });
+        break;
+      }
+
       default:
         throw new Error(
           `ProviderFactory: Unknown email provider '${providerName}'. ` +
-            "Valid values: smtp, resend, sendgrid, ses",
+            "Valid values: smtp, resend, sendgrid, ses, console, none",
         );
     }
 
