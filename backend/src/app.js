@@ -75,7 +75,10 @@ app.use(
         return callback(null, true);
       }
 
-      if (allowedOrigins.includes(origin)) {
+      const isVercelDeploy =
+        origin.endsWith(".vercel.app") && origin.includes("smart-complaint");
+
+      if (allowedOrigins.includes(origin) || isVercelDeploy) {
         return callback(null, true);
       }
 
