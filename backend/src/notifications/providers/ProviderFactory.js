@@ -62,15 +62,11 @@ export class ProviderFactory {
       }
 
       case "resend": {
-        if (!fromEmail) {
-          throw new Error(
-            "ProviderFactory: `EMAIL_FROM_ADDRESS` environment variable is required for Resend provider.",
-          );
-        }
+        const resendFrom = process.env.EMAIL_FROM_ADDRESS || "onboarding@resend.dev";
         _providerInstance = new ResendProvider({
           apiKey: process.env.RESEND_API_KEY,
           fromName,
-          fromEmail,
+          fromEmail: resendFrom,
         });
         break;
       }
