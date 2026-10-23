@@ -1,7 +1,7 @@
 import PublicNavbar from "../components/layout/PublicNavbar";
 import Hero from "../components/home/Hero";
 import Features from "../components/home/Features";
-import Statistics from "../components/home/Statistics";
+import WhoWeServe from "../components/home/WhoWeServe";
 import WhyChoose from "../components/home/WhyChoose";
 import Testimonials from "../components/home/Testimonials";
 import FAQ from "../components/home/FAQ";
@@ -14,7 +14,7 @@ function Home() {
       <Hero />
       <Features />
       <WhyChoose />
-      <Statistics />
+      <WhoWeServe />
       <Testimonials/>
       <FAQ/>
       <CTA/>
