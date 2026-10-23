@@ -1,48 +1,17 @@
-import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
-  FaUser,
-  FaRobot,
   FaUserShield,
-  FaTools,
   FaCheckCircle,
   FaBell,
-  FaArrowRight,
   FaShieldAlt,
   FaRoute,
   FaClipboardList,
   FaChartPie,
   FaEnvelope,
-  FaFolder,
-  FaClock,
   FaBuilding,
   FaTasks,
   FaUserCog,
 } from "react-icons/fa";
-
-// Smooth count animation component using requestAnimationFrame
-const AnimatedCounter = ({ target, suffix = "", duration = 1200 }) => {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    let startTimestamp = null;
-    let animationFrameId;
-
-    const step = (timestamp) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      setCount(Math.floor(progress * target));
-      if (progress < 1) {
-        animationFrameId = window.requestAnimationFrame(step);
-      }
-    };
-
-    animationFrameId = window.requestAnimationFrame(step);
-    return () => window.cancelAnimationFrame(animationFrameId);
-  }, [target, duration]);
-
-  return <span className="tabular-nums font-bold text-slate-900">{count}{suffix}</span>;
-};
 
 function Hero() {
   const workflowSteps = [
@@ -417,32 +386,6 @@ function Hero() {
           </div>
         </div>
 
-        {/* STATISTICS SECTION: Modernized 2x2 grid on mobile, horizontal row on desktop */}
-        <div className="max-w-6xl mx-auto mt-24 md:mt-32 px-6 relative z-10">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center mb-8">
-            Platform Verification Metrics
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-            {[
-              { number: 224, suffix: "+", label: "Backend Tests Passed" },
-              { number: 7, suffix: "", label: "Active Departments" },
-              { number: 4, suffix: "", label: "Configured User Roles" },
-              { number: 100, suffix: "%", label: "Role-Based Security" },
-            ].map((stat, idx) => (
-              <div
-                key={idx}
-                className="bg-white rounded-2xl shadow-sm border border-slate-150/70 p-6 md:p-8 text-center hover:shadow-md hover:border-slate-200 transition-all duration-300"
-              >
-                <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-none mb-3">
-                  <AnimatedCounter target={stat.number} suffix={stat.suffix} />
-                </h2>
-                <p className="text-xs md:text-sm font-medium text-slate-500 tracking-tight leading-snug">
-                  {stat.label}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
 
       </div>
     </section>

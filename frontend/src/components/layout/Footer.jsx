@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { FaLinkedin, FaGithub } from "react-icons/fa";
 import { FiMail, FiPhone, FiMapPin } from "react-icons/fi";
 import { BRAND } from "@/constants/brand";
@@ -147,8 +146,8 @@ const Footer = () => {
                 <FiMail className="text-blue-400 w-5 h-5 shrink-0" />
                 <div className="text-left">
                   <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Email</p>
-                  <a href="mailto:support@scms.com" className="inline-block transform hover:translate-x-1 transition-all duration-200 text-slate-300 hover:text-blue-400 cursor-pointer">
-                    support@scms.com
+                  <a href="mailto:scmcadmin01@gmail.com" className="inline-block transform hover:translate-x-1 transition-all duration-200 text-slate-300 hover:text-blue-400 cursor-pointer">
+                    scmcadmin01@gmail.com
                   </a>
                 </div>
               </div>
