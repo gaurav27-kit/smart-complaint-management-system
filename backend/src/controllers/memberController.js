@@ -285,12 +285,14 @@ export const getMemberNotifications = asyncHandler(async (req, res) => {
     type: n.type,
     title: n.title || n.subject || "Notification Notice",
     message: n.message || n.metadata?.message || n.subject || "",
-    complaintId:
-      n.complaintId ||
-      n.metadata?.complaintId ||
-      n.metadata?.complaint?._id ||
-      (typeof n.metadata?.complaint === "string" ? n.metadata?.complaint : null) ||
-      "CMP-1089",
+    complaintId: (() => {
+      const raw =
+        n.complaintId ||
+        n.metadata?.complaintId ||
+        n.metadata?.complaint?._id ||
+        (typeof n.metadata?.complaint === "string" ? n.metadata?.complaint : null);
+      return raw && mongoose.Types.ObjectId.isValid(raw) ? raw.toString() : null;
+    })(),
     isRead: n.isRead === true,
     createdAt: n.createdAt,
   }));
@@ -339,11 +341,14 @@ export const markMemberNotificationRead = asyncHandler(async (req, res) => {
       type: notification.type,
       title: notification.title || notification.subject || "Notification Notice",
       message: notification.message || notification.metadata?.message || notification.subject || "",
-      complaintId:
-        notification.complaintId ||
-        notification.metadata?.complaintId ||
-        notification.metadata?.complaint?._id ||
-        "CMP-1089",
+      complaintId: (() => {
+        const raw =
+          notification.complaintId ||
+          notification.metadata?.complaintId ||
+          notification.metadata?.complaint?._id ||
+          (typeof notification.metadata?.complaint === "string" ? notification.metadata?.complaint : null);
+        return raw && mongoose.Types.ObjectId.isValid(raw) ? raw.toString() : null;
+      })(),
       isRead: true,
       createdAt: notification.createdAt,
     },

@@ -19,6 +19,7 @@ import toast from "react-hot-toast";
 // Reused shared components
 import Loading from "@/components/ui/Loading";
 import API from "../../api/axios";
+import { formatComplaintId } from "../../utils/formatters";
 
 const Notifications = () => {
   const { user } = useAuth();
@@ -40,12 +41,16 @@ const Notifications = () => {
 
       const normalized = list.map((item) => {
         const isRead = item.isRead === true || item.status === "read";
-        const complaintRef =
+        const rawComplaintRef =
           item.complaintId ||
           item.complaint?._id ||
           (typeof item.complaint === "string" ? item.complaint : null) ||
           item.metadata?.complaintId ||
           null;
+        const complaintRef =
+          rawComplaintRef && /^[0-9a-fA-F]{24}$/.test(String(rawComplaintRef))
+            ? String(rawComplaintRef)
+            : null;
 
         return {
           id: item._id || item.id,
@@ -135,6 +140,10 @@ const Notifications = () => {
 
   // View complaint navigation handler
   const handleViewComplaint = (complaintId) => {
+    if (!complaintId || !/^[0-9a-fA-F]{24}$/.test(String(complaintId))) {
+      toast.error("No valid complaint associated with this notification.");
+      return;
+    }
     navigate(`/member/complaints/${complaintId}`);
   };
 
@@ -423,7 +432,7 @@ const Notifications = () => {
                     </p>
 
                     <div className="flex items-center gap-3 text-[11px] text-slate-400 pt-1">
-                      {notif.complaintId && (
+                      {notif.complaintId && /^[0-9a-fA-F]{24}$/.test(String(notif.complaintId)) && (
                         <>
                           <span>
                             Complaint:{" "}
@@ -434,7 +443,7 @@ const Notifications = () => {
                               }}
                               className="font-bold text-blue-600 hover:underline"
                             >
-                              #{String(notif.complaintId).slice(-6).toUpperCase()}
+                              {formatComplaintId(notif.complaintId)}
                             </button>
                           </span>
                           <span>•</span>
@@ -450,7 +459,7 @@ const Notifications = () => {
 
                 {/* Right Section: Actions (Equal Heights) */}
                 <div className="flex items-center sm:flex-col justify-end gap-2.5 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100">
-                  {notif.complaintId && (
+                  {notif.complaintId && /^[0-9a-fA-F]{24}$/.test(String(notif.complaintId)) && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

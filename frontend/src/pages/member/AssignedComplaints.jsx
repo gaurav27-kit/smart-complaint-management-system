@@ -13,6 +13,7 @@ import {
   getMemberProfile,
 } from "../../services/dashboardService";
 import { getCategoryLabel } from "../../config/complaintCategories";
+import { formatComplaintId } from "../../utils/formatters";
 
 const AssignedComplaints = () => {
   const navigate = useNavigate();
@@ -310,7 +311,7 @@ const AssignedComplaints = () => {
                   >
                     {/* Complaint ID */}
                     <td className="px-5 py-4 font-bold text-gray-900">
-                      {complaint.id || complaint._id?.substring(0, 8) || "CMP-1089"}
+                      {formatComplaintId(complaint._id || complaint.id)}
                     </td>
 
                     {/* Title */}

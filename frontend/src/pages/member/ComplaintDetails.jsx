@@ -39,6 +39,7 @@ import {
   uploadResolutionProof,
 } from "../../services/complaintService";
 import { getCategoryLabel } from "../../config/complaintCategories";
+import { formatComplaintId } from "../../utils/formatters";
 
 const ComplaintDetails = () => {
   const navigate = useNavigate();
@@ -250,7 +251,7 @@ const ComplaintDetails = () => {
         <div className="space-y-2">
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-sm font-extrabold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-md border border-indigo-100">
-              {complaint.id}
+              {formatComplaintId(complaint.id)}
             </span>
             <StatusBadge status={complaint.status} />
             <span

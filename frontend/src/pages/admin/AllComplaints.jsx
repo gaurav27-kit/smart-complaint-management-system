@@ -13,6 +13,7 @@ import {
   assignDepartmentToComplaint,
 } from "../../services/adminService";
 import { getCategoryLabel } from "../../config/complaintCategories";
+import { formatComplaintId } from "../../utils/formatters";
 
 const AllComplaints = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -280,7 +281,12 @@ const AllComplaints = () => {
             ) : (
               complaints.map((complaint) => (
                 <tr key={complaint._id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-4 font-medium text-gray-900">{complaint.title}</td>
+                  <td className="px-5 py-4 font-medium text-gray-900">
+                    <div className="font-semibold text-gray-900">{complaint.title}</div>
+                    <span className="inline-block mt-0.5 px-2 py-0.5 text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded">
+                      {formatComplaintId(complaint._id)}
+                    </span>
+                  </td>
 
                   <td className="px-5 py-4">
                     <div className="font-medium text-gray-800">{complaint.createdBy?.fullName || "N/A"}</div>
@@ -397,7 +403,12 @@ const AllComplaints = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 relative max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6 border-b pb-4">
-              <h2 className="text-2xl font-bold text-gray-900">Complaint Details</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-2xl font-bold text-gray-900">Complaint Details</h2>
+                <span className="text-sm font-extrabold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200">
+                  {formatComplaintId(selectedComplaint._id)}
+                </span>
+              </div>
               <button
                 onClick={() => setViewOpen(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors p-1"

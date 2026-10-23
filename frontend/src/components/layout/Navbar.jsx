@@ -57,7 +57,13 @@ const Navbar = () => {
   } else if (pathname.includes("/members")) {
     title = "Department Members";
     subtitle = "Manage department members and assignments.";
-  } else if (pathname.includes("/complaints") || pathname.includes("/assigned-complaints")) {
+  } else if (pathname.includes("/assigned-complaints")) {
+    title = "Assigned Complaints";
+    subtitle = "View and manage complaints assigned to your department.";
+  } else if (pathname.includes("/complaints/") || pathname.match(/\/complaints\/[a-zA-Z0-9]+/)) {
+    title = "Complaint Details";
+    subtitle = "View full complaint details, history, and status updates.";
+  } else if (pathname.includes("/complaints")) {
     title = "All Complaints";
     subtitle = "Monitor and manage citizen complaints.";
   } else if (pathname.includes("/notifications")) {

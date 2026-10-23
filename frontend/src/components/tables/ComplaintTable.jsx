@@ -2,6 +2,7 @@ import React from "react";
 import StatusBadge from "../badges/StatusBadge";
 import ActionButtons from "../buttons/ActionButtons";
 import { getCategoryLabel } from "../../config/complaintCategories";
+import { formatComplaintId } from "../../utils/formatters";
 
 const ComplaintTable = ({ complaints = [], onEdit, onDelete }) => {
   const formatDate = (dateString) => {
@@ -46,7 +47,10 @@ const ComplaintTable = ({ complaints = [], onEdit, onDelete }) => {
               <tr key={complaint._id} className="hover:bg-gray-50/50 transition-colors duration-150">
                 {/* Title */}
                 <td className="px-6 py-4 font-semibold text-gray-900 max-w-[200px] truncate">
-                  {complaint.title}
+                  <div>{complaint.title}</div>
+                  <span className="inline-block mt-0.5 px-2 py-0.5 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded">
+                    {formatComplaintId(complaint._id)}
+                  </span>
                 </td>
                 {/* Category */}
                 <td className="px-6 py-4">
